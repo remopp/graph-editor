@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Viewer — Graph Editor</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link rel="stylesheet" href="./style.css"/>
+  <style>
+    #graphCanvas {
+      width: 100%;
+      height: 60vh;
+      border-radius: 14px;
+      display: block;
+      background: #000;
+      touch-action: none;
+      cursor: grab;
+    }
+    .editor-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap:1rem; margin-top:1rem; }
+    .muted { color:#9db0e2; font-size:.9rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .small { font-size:.85rem; }
+    .rowv { display:flex; flex-direction:column; gap:.5rem; }
+    .rowh { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
+    label span { display:block; margin-bottom:.2rem; }
+    input[type="number"] { width:6rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="row" style="justify-content: space-between;">
+      <h2 id="title">Graph Viewer</h2>
+      <div>
+        <a href="./dashboard.html"><button class="secondary">Back</button></a>
+        <button id="logoutBtn" class="secondary">Log out</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <span>Type: <span id="typeBadge" class="badge"></span></span>
+        <button id="exportBtn">Export CSV</button>
+        <button id="saveBtn">Save</button>
+        <button id="undoBtn" class="btn">Undo</button>
+        <button id="redoBtn" class="btn">Redo</button>
+      </div>
+
+      <canvas id="graphCanvas"></canvas>
+
+      <div class="editor-grid">
+        <div class="card">
+          <h3>Node Editor</h3>
+          <div class="rowv">
+            <div class="rowh">
+              <strong>Selected:</strong>
+              <span id="selInfo" class="mono small">(none)</span>
+            </div>
+            <div class="rowh">
+              <label>
+                <span>New Node ID</span>
+                <input id="newNodeId" placeholder="e.g. N1" />
+              </label>
+              <label>
+                <span>Label (optional)</span>
+                <input id="newNodeLabel" placeholder="e.g. User" />
+              </label>
+              <button id="addNodeBtn">Add Node</button>
+            </div>
+            <div class="rowh">
+              <label>
+                <span>Edit ID</span>
+                <input id="editNodeId" />
+              </label>
+              <label>
+                <span>Edit Label</span>
+                <input id="editNodeLabel" />
+              </label>
+              <label>
+                <span>Layer (hierarchy)</span>
+                <input id="editNodeLayer" type="number" min="1" step="1" placeholder="1" />
+              </label>
+              <button id="applyEditBtn">Apply</button>
+              <button id="deleteNodeBtn" class="secondary">Delete</button>
+            </div>
+            <p class="muted small">
+            </p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Edge Editor</h3>
+          <div class="rowv">
+            <div class="rowh">
+              <label>
+                <span>Source</span>
+                <input id="edgeSrc" list="nodeIdsList" class="mono" placeholder="Node ID"/>
+              </label>
+              <label>
+                <span>Target</span>
+                <input id="edgeDst" list="nodeIdsList" class="mono" placeholder="Node ID"/>
+              </label>
+              <label>
+                <span>Weight (force only)</span>
+                <input id="edgeW" type="number" step="1" placeholder="(opt)"/>
+              </label>
+            </div>
+            <div class="rowh">
+              <button id="addEdgeBtn">Add Edge</button>
+              <button id="removeEdgeBtn" class="secondary">Remove Edge</button>
+            </div>
+            <p id="edgeNote" class="muted small"></p>
+          </div>
+        </div>
+      </div>
+
+      <p class="muted"></p>
+    </div>
+  </div>
+
+  <datalist id="nodeIdsList"></datalist>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="./js/api.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script type="module" src="./js/viewer/index.js"></script>
+
+
+</body>
+</html>
