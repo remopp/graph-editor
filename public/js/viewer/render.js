@@ -8,10 +8,12 @@ import {
 
 import {
   graph, transform, selectedNode, isDragging,
-  scheduleDraw, setTransform, getZoomBehavior,
+  scheduleDraw, setTransform, getZoomBehavior, selectedIds
 } from './state.js';
 
 import { layerState, yForLayer } from './layouts.js';
+
+import { getPathHighlight } from './analytics.js';
 
 //this function resizes the canvas to match its displayed size and applies HiDPI scaling
 export function resizeCanvas() {
@@ -49,10 +51,15 @@ function drawLayerGuides() {
   ctx.restore();
 }
 
+//this map is rebuilt once per frame to make id→node lookups fast while drawing
+let nodesById = new Map();
 
 // Main draw function: clear, apply pan/zoom, draw links, draw nodes
 export function draw() {
   if (!graph.nodes || graph.nodes.length === 0) return;
+
+  //this builds a fast id→node map once per frame to avoid repeated linear searches while rendering
+  nodesById = new Map((graph.nodes || []).map(n => [n.id, n]));
 
   clearCanvas();
 
@@ -61,11 +68,19 @@ export function draw() {
   ctx.scale(transform.k, transform.k);
 
   drawLayerGuides();
+
+  const links = graph.links || [];
+  const nodes = graph.nodes || [];
+
+  //this gets the current shortest-path highlight (edge indices and node ids) so we can emphasize them
+  const { edges: hlEdges, nodes: hlNodes } = getPathHighlight();
+
   if (isDragging) {
-    // Fast path while dragging: simple lines (no arrows/labels)
+    // Fast path while dragging: simple lines (no arrows/labels) for performance
     ctx.strokeStyle = '#7aa0ff55';
     ctx.lineWidth = 1.2;
-    for (const e of (graph.links || [])) {
+    for (let i = 0; i < links.length; i++) {
+      const e = links[i];
       const s = getNode(e.source), t = getNode(e.target);
       if (!s || !t) continue;
       ctx.beginPath();
@@ -73,29 +88,52 @@ export function draw() {
       ctx.lineTo(t.x || 0, t.y || 0);
       ctx.stroke();
     }
+
+    //this overlay ensures the highlighted shortest path remains clearly visible even while dragging
+    if (hlEdges.size > 0) {
+      for (const i of hlEdges) {
+        const e = links[i];
+        if (!e) continue;
+        const s = getNode(e.source), t = getNode(e.target);
+        if (!s || !t) continue;
+        ctx.strokeStyle = '#ffd54a';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(s.x || 0, s.y || 0);
+        ctx.lineTo(t.x || 0, t.y || 0);
+        ctx.stroke();
+      }
+    }
   } else {
-    // Full arrows + optional weight labels
-    for (const e of (graph.links || [])) {
+    // Full arrows + optional weight labels; edges that are part of the shortest path are drawn thicker and brighter
+    for (let i = 0; i < links.length; i++) {
+      const e = links[i];
       const s = getNode(e.source), t = getNode(e.target);
       if (!s || !t) continue;
-      drawArrowLink(s, t, e.weight);
+      const isHL = hlEdges.has(i);
+      drawArrowLink(s, t, e.weight, isHL);
     }
   }
 
-  for (const n of (graph.nodes || [])) {
-    drawNode(n, n === selectedNode); // highlight selected
+  // Draw nodes, with an extra emphasis if they are part of the shortest path
+  for (const n of nodes) {
+    const isSelected = (n === selectedNode) || selectedIds.has(n.id);
+    const isPathHighlighted = hlNodes.has(n.id);
+    drawNode(n, isSelected, isPathHighlighted);
   }
 
   ctx.restore();
 }
+
 //This function is used to retrieve the node object using either the node reference directly or its ID
 function getNode(ref) {
   if (!ref) return null;
-  return (typeof ref === 'object') ? ref : (graph.nodes.find(n => n.id === ref) || null);
+  return (typeof ref === 'object') ? ref : (nodesById.get(ref) || null);
 }
 
 // Draw a directed link with arrow head; optionally show weight label (force graphs only)
-export function drawArrowLink(s, t, weight) {
+// the optional fourth argument lets us emphasize links that are part of the shortest path
+export function drawArrowLink(s, t, weight, highlight = false) {
   const dx = (t.x || 0) - (s.x || 0);
   const dy = (t.y || 0) - (s.y || 0);
   const ang = Math.atan2(dy, dx);
@@ -109,8 +147,8 @@ export function drawArrowLink(s, t, weight) {
   const baseY = tipY - Math.sin(ang) * ARROW_LEN;
 
   // Shaft
-  ctx.strokeStyle = '#7aa0ff55';
-  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = highlight ? '#ffd54a' : '#7aa0ff55';
+  ctx.lineWidth = highlight ? 3 : 1.2;
   ctx.beginPath();
   ctx.moveTo(sx, sy);
   ctx.lineTo(baseX, baseY);
@@ -123,7 +161,7 @@ export function drawArrowLink(s, t, weight) {
   const rightX = baseX - nx * (ARROW_W / 2);
   const rightY = baseY - ny * (ARROW_W / 2);
 
-  ctx.fillStyle = '#7aa0ffcc';
+  ctx.fillStyle = highlight ? '#ffd54a' : '#7aa0ffcc';
   ctx.beginPath();
   ctx.moveTo(tipX, tipY);
   ctx.lineTo(leftX, leftY);
@@ -135,18 +173,21 @@ export function drawArrowLink(s, t, weight) {
   if (graph.type === 'force' && weight != null) {
     const midX = (sx + baseX) / 2;
     const midY = (sy + baseY) / 2;
-    ctx.fillStyle = '#c9d6ff';
+    ctx.fillStyle = highlight ? '#fff5cf' : '#c9d6ff';
     ctx.font = '10px system-ui';
     ctx.fillText(String(weight), midX + nx * 8, midY + ny * 8);
   }
 }
+
 // Draw a node as a circle with optional label; highlight if selected
-export function drawNode(n, isSelected) {
+export function drawNode(n, isSelected, isPathHighlighted = false) {
+  // base circle
   ctx.beginPath();
-  ctx.fillStyle = '#4f7cff';
+  ctx.fillStyle = isPathHighlighted ? '#ffd54a' : '#4f7cff';
   ctx.arc(n.x || 0, n.y || 0, NODE_R, 0, Math.PI * 2);
   ctx.fill();
 
+  // unified selection ring (focused OR multi-selected)
   if (isSelected) {
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 2;
@@ -155,10 +196,19 @@ export function drawNode(n, isSelected) {
     ctx.stroke();
   }
 
-  // Labels: always show selected; otherwise when zoomed enough or graphs <= 500 nodes
-  const showLabel = isSelected || transform.k >= 0.7 || (graph.nodes?.length || 0) <= 500;
+  //this extra ring makes shortest-path nodes easy to spot even when not selected
+  if (isPathHighlighted) {
+    ctx.strokeStyle = '#ffd54a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(n.x || 0, n.y || 0, NODE_R + 5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // label
+  const showLabel = isSelected || isPathHighlighted || transform.k >= 0.7 || (graph.nodes?.length || 0) <= 500;
   if (showLabel) {
-    ctx.fillStyle = '#dbe2ff';
+    ctx.fillStyle = isPathHighlighted ? '#fff5cf' : '#dbe2ff';
     ctx.font = '10px system-ui';
     ctx.fillText(n.label || n.id, (n.x || 0) + 7, (n.y || 0) + 3);
   }
@@ -190,5 +240,31 @@ export function zoomToFit(pad = 24) {
     d3.select(canvas).call(zb.transform, t);
   } else {
     scheduleDraw();
+  }
+}
+
+// This function allows users to download the current graph view as a PNG image file
+export function downloadPNG(filename = 'graph.png') {
+  // Make sure the latest frame is drawn
+  scheduleDraw();
+
+  const trigger = (url) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  if (canvas.toBlob) {
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      trigger(url);
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  } else {
+    // Fallback (older Safari)
+    trigger(canvas.toDataURL('image/png'));
   }
 }

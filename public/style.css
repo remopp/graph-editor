@@ -1,0 +1,270 @@
+/*this is the main stylesheet for the app. it keeps things simple and clean with a dark theme*/
+
+/*theme tokens (colors, spacing, fonts)*/
+:root{
+  --bg: #0b1022;
+  --surface: #11193a;
+  --surface-2: #0e1530;
+  --text: #dbe2ff;
+  --muted: #9db0e2;
+  --border: #32406b;
+  --accent: #4f7cff;
+  --accent-2: #7aa0ff;
+  --danger: #e86c6c;
+  --ok: #35cba0;
+
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
+  --radius: 12px;
+  --pad: 12px;
+  --pad-lg: 16px;
+  --gap: 10px;
+
+  --font: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/*reset and base styles*/
+*{ box-sizing: border-box; }
+html, body{ height: 100%; }
+body{
+  margin: 0;
+  font: 14px/1.5 var(--font);
+  color: var(--text);
+  background: radial-gradient(1200px 800px at 30% -20%, #16224b 0%, var(--bg) 60%) fixed;
+}
+
+/*links*/
+a{ color: var(--accent-2); text-decoration: none; }
+a:hover{ text-decoration: underline; }
+
+/*helpers*/
+.muted{ color: var(--muted); }
+.mono{ font-family: var(--mono); }
+.small{ font-size: .9rem; }
+
+/*layout containers*/
+.container{
+  /*this is the default page container*/
+  height: 100vh;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.row{
+  display: flex;
+  gap: var(--gap);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.toolbar{
+  display:flex;
+  gap: var(--gap);
+  align-items:center;
+  flex-wrap: wrap;
+  margin-bottom: var(--pad);
+}
+
+/*cards and panels*/
+.card{
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--pad-lg);
+}
+
+/*headings*/
+h1,h2,h3{
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+h2{ font-size: 1.3rem; }
+h3{ font-size: 1.1rem; color: var(--muted); }
+
+/*inputs*/
+.input,
+input[type="text"],
+input[type="number"],
+input[type="password"],
+input[type="email"]{
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #0b1330;
+  color: var(--text);
+  outline: none;
+}
+.input:focus, input:focus{
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79,124,255,.25);
+}
+input[type="number"]{ width: 6rem; }
+label span{ display:block; margin-bottom:.25rem; color: var(--muted); }
+
+/*buttons*/
+button, .btn{
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--accent);
+  background: rgba(79,124,255,.15);
+  color: var(--text);
+  border-radius: 8px;
+  cursor: pointer;
+}
+button:hover, .btn:hover{ background: rgba(79,124,255,.25); }
+button:active, .btn:active{ transform: translateY(1px); }
+
+button.secondary, .secondary{
+  border-color: var(--border);
+  background: #0c1330;
+}
+button.secondary:hover, .secondary:hover{ background: #0f1738; }
+
+button.danger{
+  border-color: var(--danger);
+  background: rgba(232,108,108,.12);
+}
+button.danger:hover{ background: rgba(232,108,108,.2); }
+
+button[disabled], .btn[disabled], input[disabled]{
+  opacity: .55;
+  cursor: default;
+  pointer-events: none;
+}
+
+/*badges*/
+.badge{
+  display:inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .8rem;
+  border: 1px solid var(--border);
+  background: #0b1330;
+  color: var(--muted);
+}
+
+/*tables (dashboard lists etc.)*/
+.table{
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.table th, .table td{
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.table th{
+  background: #0f1838;
+  color: var(--muted);
+  font-weight: 600;
+}
+.table tr:hover td{ background: rgba(79,124,255,.07); }
+
+/*dropdown menu (details/summary)*/
+details.dropdown{ position: relative; }
+details.dropdown > summary{
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0c1330;
+}
+details.dropdown > summary::-webkit-details-marker{ display:none; }
+details.dropdown[open] > summary{
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+details.dropdown .menu{
+  position: absolute;
+  right: 0;
+  top: calc(100% + .4rem);
+  z-index: 50;
+  min-width: 340px;
+  max-width: min(92vw, 560px);
+  max-height: 60vh;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+/*stack helpers inside menus*/
+.rowv{ display:flex; flex-direction:column; gap:10px; }
+.rowh{ display:flex; align-items:center; gap:10px; flex-wrap: wrap; }
+
+/*auth pages*/
+.auth-card{
+  max-width: 420px;
+  margin: 12vh auto;
+  padding: 20px;
+}
+
+/*viewer canvas sizing (make it as big as possible)*/
+/*the viewer page should span left to right and top to bottom with a small margin*/
+.container:has(#graphCanvas){
+  max-width: 100%;
+  width: 100%;
+  height: 100vh;
+  padding: 12px;              /*this is the small margin from page edges*/
+  gap: 12px;
+}
+
+/*the card that contains the canvas becomes a flex column so the canvas can grow*/
+.card:has(#graphCanvas){
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;              /*this keeps a little inner spacing around the canvas*/
+}
+
+/*the toolbar keeps natural height at the top of the card*/
+.card:has(#graphCanvas) .toolbar{
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+}
+
+/*the canvas fills all remaining height inside the card*/
+#graphCanvas{
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto !important;    /*this overrides any fixed vh set inline*/
+  min-height: 0;
+  display: block;
+  background: #000;
+  border-radius: 14px;
+  touch-action: none;
+  cursor: grab;
+}
+
+/*inline notices (optional)*/
+.notice{
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #0c1330;
+  color: var(--text);
+}
+.notice.ok{ border-color: var(--ok); }
+.notice.warn{ border-color: var(--danger); }
+
+/*responsive tweaks*/
+@media (max-width: 640px){
+  .container{ padding: 8px; }
+  .toolbar{ gap: 8px; }
+  details.dropdown .menu{ min-width: 280px; }
+  .card:has(#graphCanvas){ padding: 10px; }
+}

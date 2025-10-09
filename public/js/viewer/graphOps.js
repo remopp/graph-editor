@@ -8,7 +8,7 @@ import {
 } from './dom.js';
 
 import {
-  graph, selectedNode, setSelectedNodeValue, scheduleDraw,historyCapture 
+  graph, selectedNode, setSelectedNodeValue, scheduleDraw,historyCapture, transform
 } from './state.js';
 
 import {
@@ -121,37 +121,95 @@ export function refreshNodeIdDatalist() {
   }
 }
 
-//this function is called when the add node button is clicked
-function onAddNode() {
+/* ========================= CLICK-TO-PLACE NEW NODE ========================= */
+
+//this holds the pending new node data while waiting for the user to click on the canvas
+let pendingNodePlacement = null;
+
+//this converts a browser client coordinate to graph coordinates (uses CSS pixels to match d3-zoom transform)
+function clientToGraph(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const cssX = clientX - rect.left;
+  const cssY = clientY - rect.top;
+
+  // IMPORTANT: transform.x/y are in CSS pixels; do NOT convert to device pixels here
+  const gx = (cssX - transform.x) / transform.k;
+  const gy = (cssY - transform.y) / transform.k;
+  return { x: gx, y: gy };
+}
+
+//this finishes placement when the user clicks on the canvas
+function onCanvasPointerDownToPlace(ev) {
+  if (!pendingNodePlacement) return;
+
+  ev.stopPropagation();
+  ev.preventDefault();
+
+  const { x, y } = clientToGraph(ev.clientX, ev.clientY);
+  const { id, label } = pendingNodePlacement;
+
+  const node = { id, label: label || undefined, x, y };
+
+  // For force graphs, pin the node at the exact position so the layout does not move it
+  if (graph.type === 'force') {
+    node.fx = x;
+    node.fy = y;
+  }
+
+  // For hierarchy graphs, default to layer 1 and snap to the row
+  if (graph.type === 'hierarchy') {
+    node.layer = 1;
+    snapNodeToLayer(node, node.layer);
+  }
+
+  historyCapture('add node');
+  (graph.nodes || (graph.nodes = [])).push(node);
+
+  // clear inputs
+  if (newNodeId) newNodeId.value = '';
+  if (newNodeLabel) newNodeLabel.value = '';
+
+  // cleanup listeners / cursor
+  pendingNodePlacement = null;
+  canvas.style.cursor = 'grab';
+  window.removeEventListener('keydown', onKeyDownCancelPlacement, true);
+  // pointerdown listener was registered with { once:true }
+
+  refreshNodeIdDatalist();
+  // do not call applyLayoutForType() here; we want the node to stay where placed
+  setSelectedNode(node);
+  savePositionsDebounced();
+}
+
+//this cancels the placement flow when the user presses Escape
+function onKeyDownCancelPlacement(e) {
+  if (e.key !== 'Escape') return;
+  pendingNodePlacement = null;
+  canvas.style.cursor = 'grab';
+  window.removeEventListener('keydown', onKeyDownCancelPlacement, true);
+}
+
+//this starts the add-node placement flow and retracts the Node Editor menu
+function startAddNodePlacement() {
   const id = (newNodeId?.value || '').trim();
   const label = (newNodeLabel?.value || '').trim();
   if (!id) return alert('Enter a new node id');
   if ((graph.nodes || []).some(n => n.id === id)) return alert('Node id already exists');
 
-  // Place new node at canvas center
-  const rect = canvas.getBoundingClientRect();
-  const cx = Math.round(rect.width / 2);
-  const cy = Math.round(rect.height / 2);
+  // retract the Node Editor dropdown (so it’s out of the way while placing)
+  const nodeEditorDetails = addNodeBtn?.closest('details');
+  if (nodeEditorDetails) nodeEditorDetails.removeAttribute('open');
 
-  const node = { id, label: label || undefined, x: cx, y: cy, fx: cx, fy: cy };
+  pendingNodePlacement = { id, label };
+  canvas.style.cursor = 'crosshair';
 
-  // For hierarchy graphs, default to layer 1 and snap row
-  if (graph.type === 'hierarchy') {
-    node.layer = Number.isFinite(node.layer) ? node.layer : 1;
-    snapNodeToLayer(node, node.layer);
-  }
-
-  historyCapture('add node');
-  graph.nodes.push(node);
-
-  if (newNodeId) newNodeId.value = '';
-  if (newNodeLabel) newNodeLabel.value = '';
-
-  refreshNodeIdDatalist();
-  applyLayoutForType();   // keeps different types in shape
-  setSelectedNode(node);
-  savePositionsDebounced();
+  // capture the very next pointerdown and auto-remove; prevents drag/zoom from stealing it
+  canvas.addEventListener('pointerdown', onCanvasPointerDownToPlace, { capture: true, once: true });
+  window.addEventListener('keydown', onKeyDownCancelPlacement, true);
 }
+
+/* ======================= END CLICK-TO-PLACE NEW NODE ======================= */
+
 //applys the changes made in the edit node panel to the selected node
 function onApplyEdit() {
   if (!selectedNode) return alert('Select a node first');
@@ -174,7 +232,7 @@ function onApplyEdit() {
     if (e.target === oldId) e.target = newIdVal;
   }
 
-// Determine requested layer (if any)
+  // Determine requested layer (if any)
   let willChangeLayer = false;
   let requestedLayer = selectedNode.layer;
   if (graph.type === 'hierarchy' && editNodeLayer) {
@@ -289,7 +347,7 @@ function onRemoveEdge() {
 // this function sets up the event listeners for the graph operation buttons and inputs
 export function setupGraphOps() {
   // Buttons / inputs
-  if (addNodeBtn)     addNodeBtn.addEventListener('click', onAddNode);
+  if (addNodeBtn)     addNodeBtn.addEventListener('click', startAddNodePlacement);
   if (applyEditBtn)   applyEditBtn.addEventListener('click', onApplyEdit);
   if (deleteNodeBtn)  deleteNodeBtn.addEventListener('click', onDeleteNode);
 

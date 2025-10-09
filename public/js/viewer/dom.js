@@ -7,9 +7,14 @@ export const titleEl       = $('title');
 export const typeBadge     = $('typeBadge');
 export const logoutBtn     = $('logoutBtn');
 export const exportBtn     = $('exportBtn');
+export const exportPngBtn = $('exportPngBtn');
 export const saveBtn       = $('saveBtn');
 export const undoBtn      = $('undoBtn');
 export const redoBtn      = $('redoBtn');
+export const searchInput = $('searchInput');
+export const searchBtn   = $('searchBtn');
+export const searchCount = $('searchCount');
+
 
 
 export const canvas        = $('graphCanvas');

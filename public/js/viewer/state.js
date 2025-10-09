@@ -8,6 +8,20 @@ export const graph = {
   title: '',
 };
 
+export let selectedIds = new Set();
+
+export function setSelection(ids = []) {
+  selectedIds = new Set(ids);
+  scheduleDraw();
+}
+
+export function clearSelection() {
+  selectedIds.clear();
+  // keep focused node consistent
+  setSelectedNodeValue?.(null);
+  scheduleDraw();
+}
+
 // here program sets the selected node object (or null)
 export let selectedNode = null;
 // this function sets the selected node 
@@ -51,6 +65,17 @@ export function scheduleDraw() {
     }
   });
 }
+
+
+// SEARCH
+export let searchMatches = new Set();           // ids of matched nodes
+export let searchIndex = 0;                     // which match is “active”
+export function setSearchResults(ids, index=0){ 
+  searchMatches = new Set(ids);
+  searchIndex = Math.max(0, Math.min(index, ids.length-1));
+  scheduleDraw();
+}
+
 
 //undo/redo
 

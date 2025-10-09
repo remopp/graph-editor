@@ -1,15 +1,13 @@
 // this file handles user interactions like zooming, panning, and dragging nodes in the graph viewer using d3.js
 
 import { canvas, NODE_R } from './dom.js';
-import {
-  graph, transform, setTransform, setIsDragging, setZoomBehavior, scheduleDraw, historyCapture 
-} from './state.js';
+import {graph, transform, setTransform, setIsDragging, setZoomBehavior, scheduleDraw, historyCapture, selectedIds, setSelection } from './state.js';
 import { setSelectedNode, validateLayerChange  } from './graphOps.js';
 import { stopSim, yForLayer, snapNodeToLayer, layerState } from './layouts.js';
 import { savePositionsDebounced } from './persistence.js';
 
 let lastPointerDown = { x: 0, y: 0 };
-
+let dragGroup = null;
 //this function sets up zoom and drag behavior on the canvas using d3.js
 export function setupZoomAndDrag() {
   //here the zoom behavior is defined using d3.js
@@ -52,8 +50,14 @@ export function setupZoomAndDrag() {
     const dx = e.offsetX - lastPointerDown.x;
     const dy = e.offsetY - lastPointerDown.y;
     if (dx*dx + dy*dy < 4) {
-      const hit = findNodeAt(e.offsetX, e.offsetY);
-      setSelectedNode(hit || null);
+        const hit = findNodeAt(e.offsetX, e.offsetY);
+        if (hit) {
+          setSelectedNode(hit);
+          setSelection([hit.id]);     // make it the sole selection
+        } else {
+          setSelectedNode(null);
+          setSelection([]);           // clear selection on empty click
+        }
     }
   });
 }
@@ -82,71 +86,85 @@ function dragstarted(event) {
   setSelectedNode(n);
   setIsDragging(true);
 
-  // compute offset so we don't snap
+  // pointer → graph coords
   const srcEv = event.sourceEvent || event;
   const [sx, sy] = d3.pointer(srcEv, canvas);
   const gx = (sx - transform.x) / transform.k;
   const gy = (sy - transform.y) / transform.k;
-  n._dragOff = { dx: (n.x || 0) - gx, dy: (n.y || 0) - gy };
-  n._startLayer = Math.max(1, Math.floor(n.layer) || 1);
+
+  // Build the drag group:
+  // - If the grabbed node is already in a multi-selection, move that whole selection
+  // - Otherwise, make this node the sole selection and move just it
+  if (selectedIds.size && selectedIds.has(n.id)) {
+    const nodes = graph.nodes || [];
+    dragGroup = nodes.filter(x => selectedIds.has(x.id));
+  } else {
+    setSelection?.([n.id]); // keep it resilient if setSelection isn't imported
+    dragGroup = [n];
+  }
+
+  // Per-node offsets + starting layer (for revert/snap)
+  for (const g of dragGroup) {
+    g._dragOff = { dx: (g.x || 0) - gx, dy: (g.y || 0) - gy };
+    g._startLayer = Math.max(1, Math.floor(g.layer) || 1);
+  }
+
+  n._captured = false; // one history entry per gesture
   stopSim();
-  n._captured = false;
 }
 
 // update node position as it's being dragged
 function dragged(event) {
   const n = event.subject; if (!n) return;
 
-  // Convert current pointer to graph coords
   const srcEv = event.sourceEvent || event;
   const [sx, sy] = d3.pointer(srcEv, canvas);
   const gx = (sx - transform.x) / transform.k;
   const gy = (sy - transform.y) / transform.k;
 
-  const dx = n._dragOff?.dx || 0;
-  const dy = n._dragOff?.dy || 0;
-  
-  const newX = gx + dx;
-  const newY = gy + dy;
+  if (!n._captured) { historyCapture('drag move (group)'); n._captured = true; }
 
-
-  if (!n._captured) {
-    historyCapture('drag move'); 
-    n._captured = true;    
+  // Move entire group together (each with its own offset)
+  const group = dragGroup || [n];
+  for (const g of group) {
+    const dx = g._dragOff?.dx || 0;
+    const dy = g._dragOff?.dy || 0;
+    g.x = gx + dx;
+    g.y = gy + dy;
   }
 
-  n.x = newX;
-  n.y = newY; 
-
-  scheduleDraw(); // smoother than calling draw() directly every mousemove
+  scheduleDraw();
 }
+
 // finalize node position after dragging ends
 function dragended(event) {
   const n = event.subject; if (!n) return;
   canvas.style.cursor = 'grab';
   setIsDragging(false);
 
+  const group = dragGroup || [n];
+
   if (graph.type === 'hierarchy') {
     const startY = layerState.startY;
     const gapY   = layerState.gapY;
-    const nearest = Math.max(1, Math.round((n.y - startY) / gapY) + 1);
 
-    if (nearest !== n._startLayer) {
-      const v = validateLayerChange(n, nearest);
-      if (v?.ok) {
-        snapNodeToLayer(n, nearest);
+    for (const g of group) {
+      const nearest = Math.max(1, Math.round((g.y - startY) / gapY) + 1);
+      if (nearest !== g._startLayer) {
+        const v = validateLayerChange(g, nearest);
+        if (v?.ok) snapNodeToLayer(g, nearest);
+        else { g.layer = g._startLayer; g.y = yForLayer(g._startLayer); }
       } else {
-        n.layer = n._startLayer;
-        n.y = yForLayer(n._startLayer);
+        // snapped back to the exact row for its original layer
+        g.y = yForLayer(g._startLayer);
       }
-    } else {
-      n.y = yForLayer(n._startLayer);
     }
   }
 
-  delete n._dragOff;
-  delete n._startLayer;
+  // cleanup
+  for (const g of group) { delete g._dragOff; delete g._startLayer; }
   delete n._captured;
+  dragGroup = null;
 
   savePositionsDebounced();
   scheduleDraw();
