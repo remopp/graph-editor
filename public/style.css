@@ -212,6 +212,65 @@ details.dropdown .menu{
   padding: 20px;
 }
 
+/*auth forms — username focus*/
+.auth-form{ 
+  display: grid; 
+  gap: 12px; 
+}
+.auth-form .field{ 
+  display: grid; 
+  gap: 6px; 
+}
+.auth-form label{ 
+  color: var(--muted); 
+  font-size: .95rem; 
+}
+
+/*username row with optional prefix chip (like @)*/
+.input-row{ 
+  position: relative; 
+}
+.input-row .prefix{
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0 6px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0b1330;
+  color: var(--muted);
+  font-size: .85rem;
+  pointer-events: none;
+}
+/*space for the prefix chip*/
+.input-row input{
+  width: 100%;
+  padding-left: 52px;
+}
+
+/*helper and error text*/
+.form-hint{ color: var(--muted); font-size: .9rem; }
+.form-error{ color: var(--danger); font-size: .9rem; }
+.input-error{
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px rgba(232,108,108,.18);
+}
+
+/*auth actions row*/
+.auth-actions{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.auth-links a{ color: var(--muted); }
+.auth-links a:hover{ color: var(--text); }
+
 /*viewer canvas sizing (make it as big as possible)*/
 /*the viewer page should span left to right and top to bottom with a small margin*/
 .container:has(#graphCanvas){
@@ -267,4 +326,6 @@ details.dropdown .menu{
   .toolbar{ gap: 8px; }
   details.dropdown .menu{ min-width: 280px; }
   .card:has(#graphCanvas){ padding: 10px; }
+  .auth-card{ margin: 8vh 12px; }
+  .input-row input{ padding-left: 48px; }
 }
