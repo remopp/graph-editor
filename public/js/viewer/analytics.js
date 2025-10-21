@@ -1,122 +1,165 @@
-//this file is for analytics functions like shortest path
-import { graph, scheduleDraw } from './state.js';
+//this module contains shortest path logic, the path-highlighting state used by the renderer,
+//and simple centrality analytics (degree + pagerank)
 
-let highlightedPath = { nodes: new Set(), edges: new Set(), total: 0 };
+import { graph, setSelection, scheduleDraw } from './state.js';
 
-//this variable controls whether shortest path treats edges as undirected (true) or directed (false)
-export let pathTreatEdgesAsUndirected = false;
+//this keeps track of which nodes/edges are currently highlighted (renderer reads this)
+let _pathHighlight = { nodes: new Set(), edges: new Set() };
+//this returns the current highlight sets (used by render.js to style path)
+export function getPathHighlight() { return _pathHighlight; }
 
-//this function lets you change the direction mode from other modules if needed
-export function setPathUndirected(v) {
-  pathTreatEdgesAsUndirected = !!v;
+//this helper selects nodes in the ui and requests a redraw
+function highlightNodes(ids) {
+  try { setSelection(ids); scheduleDraw(); } catch {}
 }
 
-//this function clears any current shortest-path highlight and schedules a redraw
-export function clearPathHighlight() {
-  highlightedPath = { nodes: new Set(), edges: new Set(), total: 0 };
-  scheduleDraw();
-}
+//this computes the shortest path using dijkstra (weights if present, else 1). it treats edges as undirected.
+export function shortestPath(srcId, dstId, g = graph) {
+  const nodes = g?.nodes || [];
+  const links = g?.links || [];
+  if (!srcId || !dstId) return { ok: false, msg: 'missing ids' };
 
-//this function returns the current shortest-path highlight (edge indices, node ids, and total weight)
-export function getPathHighlight() {
-  return highlightedPath;
-}
+  const id2idx = new Map(nodes.map((n, i) => [String(n.id), i]));
+  const n = nodes.length;
+  if (!id2idx.has(String(srcId)) || !id2idx.has(String(dstId))) return { ok: false, msg: 'id not found' };
 
-//this function computes the shortest path using Dijkstra with edge.weight or 1 if missing
-//this analytic is only available for the force-directed graph type
-//this returns { ok:boolean, edges?:Array<number>, nodes?:Array<string>, total?:number, msg?:string }
-export function shortestPath(srcId, dstId) {
-  //this guards the feature so it only runs for the force-directed type
-  if (graph.type !== 'force') {
-    return { ok:false, msg:'Shortest path is only available for the force-directed graph type.' };
+  //this builds an undirected adjacency list with weights
+  const adj = Array.from({ length: n }, () => []);
+  for (const e of links) {
+    const s = typeof e.source === 'object' ? e.source.id : e.source;
+    const t = typeof e.target === 'object' ? e.target.id : e.target;
+    const w = (e.weight != null && Number.isFinite(Number(e.weight))) ? Number(e.weight) : 1;
+    const si = id2idx.get(String(s));
+    const ti = id2idx.get(String(t));
+    if (si == null || ti == null) continue;
+    adj[si].push({ j: ti, w });
+    adj[ti].push({ j: si, w });
   }
 
-  if (!srcId || !dstId) return { ok:false, msg:'Source and target are required.' };
-  if (srcId === dstId) {
-    highlightedPath = { nodes: new Set([srcId]), edges: new Set(), total: 0 };
-    scheduleDraw();
-    return { ok:true, edges:[], nodes:[srcId], total:0 };
-  }
+  const src = id2idx.get(String(srcId));
+  const dst = id2idx.get(String(dstId));
 
-  const nodes = graph.nodes || [];
-  const links = graph.links || [];
-  const id2idx = new Map(nodes.map((n,i) => [n.id, i]));
-  if (!id2idx.has(srcId) || !id2idx.has(dstId)) {
-    return { ok:false, msg:'One or both node IDs do not exist.' };
-  }
+  //this is the plain dijkstra loop (array-based priority for simplicity)
+  const dist = new Array(n).fill(Infinity);
+  const prev = new Array(n).fill(-1);
+  const used = new Array(n).fill(false);
+  dist[src] = 0;
 
-  //this builds an adjacency list; if pathTreatEdgesAsUndirected is true, edges are added both ways
-  const adj = new Map();
-  for (let i = 0; i < nodes.length; i++) adj.set(nodes[i].id, []);
+  for (let k = 0; k < n; k++) {
+    let u = -1, best = Infinity;
+    for (let i = 0; i < n; i++) if (!used[i] && dist[i] < best) { best = dist[i]; u = i; }
+    if (u === -1) break;
+    used[u] = true;
+    if (u === dst) break;
 
-  links.forEach((e, idx) => {
-    const s = (typeof e.source === 'object') ? e.source?.id : e.source;
-    const t = (typeof e.target === 'object') ? e.target?.id : e.target;
-    if (!adj.has(s) || !adj.has(t)) return;
-    const w = Number.isFinite(e.weight) ? e.weight : 1;
-
-    // directed edge s -> t
-    adj.get(s).push({ to: t, w, edgeIndex: idx });
-
-    // optional reverse edge t -> s (only when treating as undirected)
-    if (pathTreatEdgesAsUndirected) {
-      adj.get(t).push({ to: s, w, edgeIndex: idx });
-    }
-  });
-
-  //this initializes Dijkstra structures
-  const dist = new Map(nodes.map(n => [n.id, Infinity]));
-  const prev = new Map(); // id -> { id, edgeIndex }
-  dist.set(srcId, 0);
-
-  //this is a simple priority queue using sorting (fine for hundreds/thousands of nodes)
-  const pq = [{ id: srcId, d: 0 }];
-
-  while (pq.length) {
-    pq.sort((a,b) => a.d - b.d); //this extracts the smallest distance
-    const { id: u, d } = pq.shift();
-    if (d !== dist.get(u)) continue;
-    if (u === dstId) break;
-
-    const edges = adj.get(u);
-    if (!edges) continue;
-
-    for (const { to: v, w, edgeIndex } of edges) {
-      const nd = d + w;
-      if (nd < dist.get(v)) {
-        dist.set(v, nd);
-        prev.set(v, { id: u, edgeIndex });
-        pq.push({ id: v, d: nd });
-      }
+    for (const { j, w } of adj[u]) {
+      const nd = dist[u] + Math.max(0, w);
+      if (nd < dist[j]) { dist[j] = nd; prev[j] = u; }
     }
   }
 
-  if (!isFinite(dist.get(dstId))) {
-    return { ok:false, msg:'No path found between the selected nodes.' };
-  }
+  if (!Number.isFinite(dist[dst])) return { ok: false, msg: 'no path' };
 
-  //this reconstructs the path from dstId back to srcId and collects edge indices
-  const pathNodes = [];
-  const pathEdges = [];
-  let cur = dstId;
-  while (cur !== undefined && cur !== srcId) {
-    pathNodes.push(cur);
-    const p = prev.get(cur);
-    if (!p) break;
-    pathEdges.push(p.edgeIndex);
-    cur = p.id;
-  }
-  pathNodes.push(srcId);
-  pathNodes.reverse();
-  pathEdges.reverse();
+  //this reconstructs the path order (indices to ids)
+  const order = [];
+  for (let v = dst; v !== -1; v = prev[v]) order.push(v);
+  order.reverse();
 
-  //this saves the highlight state and triggers a redraw
-  highlightedPath = {
-    nodes: new Set(pathNodes),
-    edges: new Set(pathEdges),
-    total: dist.get(dstId)
+  const nodeIds = order.map(i => nodes[i].id);
+  const edgeList = order.slice(1).map((v, k) => ({ source: nodes[order[k]].id, target: nodes[v].id }));
+
+  //this updates the path highlight store for the renderer
+  _pathHighlight = {
+    nodes: new Set(nodeIds),
+    edges: new Set(edgeList.map(e => `${e.source}->${e.target}`))
   };
-  scheduleDraw();
 
-  return { ok:true, edges: pathEdges, nodes: pathNodes, total: dist.get(dstId) };
+  //this mirrors highlight into the ui selection
+  highlightNodes(nodeIds);
+
+  return { ok: true, total: dist[dst], nodes: nodeIds, edges: edgeList };
+}
+
+//this clears the path highlight and ui selection
+export function clearPathHighlight() {
+  _pathHighlight.nodes.clear();
+  _pathHighlight.edges.clear();
+  try { setSelection([]); scheduleDraw(); } catch {}
+}
+
+//this computes degree centrality; mode = 'total' | 'in' | 'out'. accepts an optional graph.
+export function degreeCentrality(mode = 'total', g = graph) {
+  const nodes = g?.nodes || [];
+  const links = g?.links || [];
+  const id2idx = new Map(nodes.map((n, i) => [n.id, i]));
+  const degIn  = new Array(nodes.length).fill(0);
+  const degOut = new Array(nodes.length).fill(0);
+
+  for (const e of links) {
+    const s = typeof e.source === 'object' ? e.source.id : e.source;
+    const t = typeof e.target === 'object' ? e.target.id : e.target;
+    const si = id2idx.get(String(s));
+    const ti = id2idx.get(String(t));
+    if (si == null || ti == null) continue;
+    degOut[si] += 1;
+    degIn[ti]  += 1;
+  }
+
+  return nodes.map((n, i) => {
+    let score = 0;
+    if (mode === 'in') score = degIn[i];
+    else if (mode === 'out') score = degOut[i];
+    else score = degIn[i] + degOut[i];
+    return { id: n.id, score };
+  });
+}
+
+//this computes pagerank with power-iteration; d in [0,1]. accepts an optional graph.
+export function pageRank({ d = 0.85, maxIter = 50, tol = 1e-6 } = {}, g = graph) {
+  const nodes = g?.nodes || [];
+  const links = g?.links || [];
+  const N = nodes.length;
+  if (N === 0) return [];
+
+  const id2idx = new Map(nodes.map((n, i) => [n.id, i]));
+  const outNeighbors = Array.from({ length: N }, () => new Set());
+  const outDegree = new Array(N).fill(0);
+
+  for (const e of links) {
+    const s = typeof e.source === 'object' ? e.source.id : e.source;
+    const t = typeof e.target === 'object' ? e.target.id : e.target;
+    const si = id2idx.get(String(s));
+    const ti = id2idx.get(String(t));
+    if (si == null || ti == null) continue;
+    if (si === ti) continue; // ignore self loops
+    if (!outNeighbors[si].has(ti)) {
+      outNeighbors[si].add(ti);
+      outDegree[si] += 1;
+    }
+  }
+
+  let pr = new Array(N).fill(1 / N);
+  let next = new Array(N).fill(0);
+
+  for (let iter = 0; iter < maxIter; iter++) {
+    let danglingSum = 0;
+    for (let i = 0; i < N; i++) if (outDegree[i] === 0) danglingSum += pr[i];
+
+    const base = (1 - d) / N;
+    const danglingShare = d * danglingSum / N;
+    next.fill(base + danglingShare);
+
+    for (let i = 0; i < N; i++) {
+      if (outDegree[i] === 0) continue;
+      const share = d * pr[i] / outDegree[i];
+      for (const j of outNeighbors[i]) next[j] += share;
+    }
+
+    let diff = 0;
+    for (let i = 0; i < N; i++) diff += Math.abs(next[i] - pr[i]);
+    pr = next.slice();
+    if (diff < tol) break;
+  }
+
+  return nodes.map((n, i) => ({ id: n.id, score: pr[i] }));
 }

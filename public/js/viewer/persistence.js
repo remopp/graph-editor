@@ -30,14 +30,21 @@ export async function savePositionsOnly() {
   const id = getCurrentGraphId();
   if (!id) return;
 
-  const nodesOut = (graph.nodes || []).map(({ id, label, x, y, layer }) => {
-    const base = { id, label, x, y };
+  // this sends only position (and layer for hierarchy) so server merges without dropping description
+  const nodesOut = (graph.nodes || []).map(({ id, x, y, layer }) => {
+    const base = { id, x, y };
     if (graph.type === 'hierarchy' && Number.isFinite(layer)) base.layer = layer;
     return base;
   });
 
   const res = await apiPut(`/api/graphs/${id}`, { nodes: nodesOut });
-  if (res?.error) console.warn('Position save failed:', res.error);
+  if (res?.error) {
+    if (res.error === 'forbidden_readonly') {
+      console.warn('read-only: you do not have edit access');
+    } else {
+      console.warn('Position save failed:', res.error);
+    }
+  }
 }
 
 //this function saves the entire graph (nodes and links) to the server
@@ -48,14 +55,24 @@ export async function saveAll() {
   // Ensure links are plain id refs before saving
   normalizeLinks();
 
-  const nodesOut = (graph.nodes || []).map(({ id, label, x, y, layer }) => {
-    const base = { id, label, x, y };
+  // this includes description and position; no fx/fy needed without a sim
+  const nodesOut = (graph.nodes || []).map(({ id, label, description, x, y, layer }) => {
+    const base = { id };
+    if (label != null) base.label = label;
+    if (description != null) base.description = description;
+    if (Number.isFinite(x)) base.x = x;
+    if (Number.isFinite(y)) base.y = y;
     if (graph.type === 'hierarchy' && Number.isFinite(layer)) base.layer = layer;
     return base;
   });
 
   const payload = { nodes: nodesOut, links: graph.links || [] };
   const res = await apiPut(`/api/graphs/${id}`, payload);
-  if (res?.error) return alert(res.error);
+  if (res?.error) {
+    if (res.error === 'forbidden_readonly') {
+      return alert('This graph is read-only for you. Ask the owner to make you an editor.');
+    }
+    return alert(res.error);
+  }
   alert('Saved!');
 }

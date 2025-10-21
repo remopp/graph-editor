@@ -33,6 +33,8 @@ export const editNodeLabel = $('editNodeLabel');
 export const editNodeLayer = $('editNodeLayer');
 export const applyEditBtn  = $('applyEditBtn');
 export const deleteNodeBtn = $('deleteNodeBtn');
+export const newNodeDesc = $('newNodeDesc');
+export const editNodeDesc = $('editNodeDesc');
 
 // Edge editor
 export const edgeSrc       = $('edgeSrc');

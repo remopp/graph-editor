@@ -55,9 +55,30 @@
       </div>
     </div>
   </div>
-
+  <dialog id="shareRoleDlg">
+    <form method="dialog" id="shareRoleForm">
+      <h3 id="shareRoleTitle">share access</h3>
+      <label style="display:block; margin:8px 0 12px;">
+        <span class="small muted" style="display:block; margin-bottom:.25rem;">username</span>
+        <input id="shareRoleUsername" name="username" placeholder="@user" autocomplete="off" />
+      </label>
+      <div class="row" style="margin:6px 0 16px;">
+        <label style="display:flex; gap:6px; align-items:center; cursor:pointer;">
+          <input type="radio" name="role" value="viewer" checked>
+          <span>viewer</span>
+        </label>
+        <label style="display:flex; gap:6px; align-items:center; cursor:pointer;">
+          <input type="radio" name="role" value="editor">
+          <span>editor</span>
+        </label>
+      </div>
+      <div class="row" style="justify-content:flex-end;">
+        <button class="secondary" value="cancel">Cancel</button>
+        <button id="shareRoleOkBtn" value="ok">OK</button>
+      </div>
+    </form>
+  </dialog>
   <script src="./js/api.js"></script>
   <script type="module" src="./js/dashboard.js"></script>
-
 </body>
 </html>

@@ -51,14 +51,14 @@ function drawLayerGuides() {
   ctx.restore();
 }
 
-//this map is rebuilt once per frame to make id→node lookups fast while drawing
+//this map is rebuilt once per frame to make id ot node lookups fast while drawing
 let nodesById = new Map();
 
 // Main draw function: clear, apply pan/zoom, draw links, draw nodes
 export function draw() {
   if (!graph.nodes || graph.nodes.length === 0) return;
 
-  //this builds a fast id→node map once per frame to avoid repeated linear searches while rendering
+  //this builds a fast id to node map once per frame to avoid repeated linear searches while rendering
   nodesById = new Map((graph.nodes || []).map(n => [n.id, n]));
 
   clearCanvas();

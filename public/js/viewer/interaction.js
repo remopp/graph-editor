@@ -3,7 +3,7 @@
 import { canvas, NODE_R } from './dom.js';
 import {graph, transform, setTransform, setIsDragging, setZoomBehavior, scheduleDraw, historyCapture, selectedIds, setSelection } from './state.js';
 import { setSelectedNode, validateLayerChange  } from './graphOps.js';
-import { stopSim, yForLayer, snapNodeToLayer, layerState } from './layouts.js';
+import {  yForLayer, snapNodeToLayer, layerState } from './layouts.js';
 import { savePositionsDebounced } from './persistence.js';
 
 let lastPointerDown = { x: 0, y: 0 };
@@ -86,15 +86,13 @@ function dragstarted(event) {
   setSelectedNode(n);
   setIsDragging(true);
 
-  // pointer → graph coords
+  // pointer to graph coords
   const srcEv = event.sourceEvent || event;
   const [sx, sy] = d3.pointer(srcEv, canvas);
   const gx = (sx - transform.x) / transform.k;
   const gy = (sy - transform.y) / transform.k;
 
-  // Build the drag group:
-  // - If the grabbed node is already in a multi-selection, move that whole selection
-  // - Otherwise, make this node the sole selection and move just it
+  // drag group (selected nodes or just this one)
   if (selectedIds.size && selectedIds.has(n.id)) {
     const nodes = graph.nodes || [];
     dragGroup = nodes.filter(x => selectedIds.has(x.id));
@@ -110,7 +108,6 @@ function dragstarted(event) {
   }
 
   n._captured = false; // one history entry per gesture
-  stopSim();
 }
 
 // update node position as it's being dragged

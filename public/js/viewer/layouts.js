@@ -3,20 +3,11 @@
 import { canvas } from './dom.js';
 import { graph, scheduleDraw } from './state.js';
 
-
 let sim = null;
-// stop any running simulation
+// stop any running simulation (kept as a harmless no-op)
 export function stopSim() {
   if (sim && typeof sim.stop === 'function') sim.stop();
   sim = null;
-}
-
-// keep a node's y locked to its current layer row (without changing its layer)
-export function lockYToCurrentLayer(n) {
-  const L = Math.max(1, Math.floor(n.layer) || 1);
-  const y = yForLayer(L);
-  n.y = y;
-  n.fy = y;
 }
 
 // get current canvas size
@@ -29,26 +20,12 @@ export function allHavePositions() {
   return (graph.nodes || []).length > 0 &&
          (graph.nodes || []).every(n => Number.isFinite(n.x) && Number.isFinite(n.y));
 }
-// Pin all nodes to their current x/y (fix in place)
-export function pinToCurrentXY() {
-  for (const n of (graph.nodes || [])) {
-    if (Number.isFinite(n.x) && Number.isFinite(n.y)) {
-      n.fx = n.x; n.fy = n.y;
-    }
-  }
-}
-// Zero out all node velocities (for force layout)
-function zeroVelocities() {
-  for (const n of (graph.nodes || [])) {
-    n.vx = 0; n.vy = 0;
-  }
-}
 // asign initial positon to nodes without x/y (in a circle)
 export function seedPositions() {
   const { width, height } = canvasSize();
   const cx = width / 2, cy = height / 2;
   const N  = Math.max(1, (graph.nodes || []).length);
-  const R  = Math.min(width, height) * 0.38; // bigger radius so nodes start apart
+  const R  = Math.min(width, height) * 0.38;
 
   (graph.nodes || []).forEach((n, i) => {
     if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) {
@@ -59,24 +36,15 @@ export function seedPositions() {
   });
 }
 
-
 //apply the appropriate layout based on the graph type
 export function applyLayoutForType() {
   stopSim();
   const t = graph.type || 'force';
   const hasSaved = allHavePositions();
 
-  // If we already have positions, pin them so nothing moves unexpectedly
-  if (hasSaved && t !== 'hierarchy') pinToCurrentXY();
-
   switch (t) {
     case 'force': {
-      // NO simulation: if positions exist, keep them; else seed & pin.
-      if (!hasSaved) {
-        seedPositions();
-        pinToCurrentXY();
-      }
-      zeroVelocities();
+      if (!hasSaved) seedPositions();
       scheduleDraw();
       break;
     }
@@ -94,7 +62,7 @@ export function applyLayoutForType() {
     }
 
     case 'hierarchy': {
-      layoutHierarchy(); // respects n.layer and sets/pins rows
+      layoutHierarchy();
       scheduleDraw();
       break;
     }
@@ -115,7 +83,6 @@ export function layoutCircle() {
     const a = (i / N) * Math.PI * 2;
     n.x = cx + R * Math.cos(a);
     n.y = cy + R * Math.sin(a);
-    n.fx = n.x; n.fy = n.y;
   });
 }
 
@@ -133,7 +100,6 @@ export function layoutGrid() {
     const c = i % cols;
     n.x = startX + c * gap;
     n.y = startY + r * gap;
-    n.fx = n.x; n.fy = n.y;
   });
 }
 
@@ -176,16 +142,6 @@ export function yForLayer(L) {
   ensureLayerState();
   return layerState.startY + (Math.max(1, Math.floor(L)) - 1) * layerState.gapY;
 }
-// snap a node to the nearest layer based on its current y-coordinate
-export function snapNodeToNearestLayer(n) {
-  ensureLayerState();
-  const raw = 1 + Math.round((n.y - layerState.startY) / layerState.gapY);
-  const L = Math.max(1, raw);
-  if (L > layerState.Lmax) layerState.Lmax = L;
-  n.layer = L;
-  n.y = yForLayer(L);
- // n.fx = n.x; n.fy = n.y;
-}
 // snap a node to a specific layer number
 export function snapNodeToLayer(n, L) {
   ensureLayerState();
@@ -193,7 +149,49 @@ export function snapNodeToLayer(n, L) {
   if (Lint > layerState.Lmax) layerState.Lmax = Lint;
   n.layer = Lint;
   n.y = yForLayer(Lint);
-  //n.fx = n.x; n.fy = n.y;
+}
+
+// arrange nodes in a hierarchical layout based on their assigned layers
+export function layoutHierarchy() {
+  const nodes = graph.nodes || [];
+  const links = graph.links || [];
+
+  const needs = nodes.some(n => !Number.isFinite(n.layer));
+  if (needs) computeHierarchyLayers(nodes, links);
+
+  const { width, height } = canvasSize();
+  const TOP_PAD = 40, MIN_YGAP = 80, MAX_YGAP = 140, SIDE_PAD = 40, MIN_XGAP = 60;
+
+  let Lmax = 1;
+  for (const n of nodes) if (Number.isFinite(n.layer)) Lmax = Math.max(Lmax, Math.floor(n.layer));
+
+  const rows = Math.max(1, Lmax);
+  const availableH = Math.max(1, height - TOP_PAD*2);
+  const gapY = Math.max(MIN_YGAP, Math.min(MAX_YGAP, rows > 1 ? (availableH / (rows - 1)) : availableH));
+  const startY = TOP_PAD;
+
+  layerState = { enabled: true, startY, gapY, Lmax: rows, xGap: MIN_XGAP, sidePad: SIDE_PAD };
+
+  const buckets = new Map();
+  for (const n of nodes) {
+    const L = Math.max(1, Number.isFinite(n.layer) ? Math.floor(n.layer) : 1);
+    if (!buckets.has(L)) buckets.set(L, []);
+    buckets.get(L).push(n);
+  }
+
+  for (const [L, arr] of buckets) {
+    arr.sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' }));
+    const count = arr.length || 1;
+    const totalW = Math.max(0, (count - 1) * MIN_XGAP);
+    const startX = Math.max(SIDE_PAD, (width - totalW) / 2);
+    const y = startY + (L - 1) * gapY;
+
+    arr.forEach((n, i) => {
+      if (!Number.isFinite(n.x)) n.x = startX + i * MIN_XGAP;
+      n.y = y;
+      n.layer = L;
+    });
+  }
 }
 
 // compute layers for all nodes based on edges (Kahn topological sort)
@@ -210,7 +208,6 @@ export function computeHierarchyLayers(nodes, links) {
     out.get(s).push(t);
     indeg.set(t, (indeg.get(t) || 0) + 1);
     preds.get(t).push(s);
-    // ensure keys initialized
     if (!out.has(t)) out.set(t, out.get(t) || []);
     if (!preds.has(s)) preds.set(s, preds.get(s) || []);
   }
@@ -218,11 +215,9 @@ export function computeHierarchyLayers(nodes, links) {
   const layer = new Map();
   const q = [];
 
-  // indegree-0 nodes start at layer 1
   for (const [id, deg] of indeg) {
     if (deg === 0) { layer.set(id, 1); q.push(id); }
   }
-  // isolated nodes → layer 1
   for (const n of nodes) {
     if (!indeg.has(n.id)) {
       layer.set(n.id, 1);
@@ -233,7 +228,6 @@ export function computeHierarchyLayers(nodes, links) {
     }
   }
 
-  // Kahn propagation
   while (q.length) {
     const u = q.shift();
     const L = layer.get(u) || 1;
@@ -244,7 +238,6 @@ export function computeHierarchyLayers(nodes, links) {
     }
   }
 
-  // cycles: place just below max predecessor layer
   for (const n of nodes) {
     if (!layer.has(n.id)) {
       const ps = preds.get(n.id) || [];
@@ -254,57 +247,7 @@ export function computeHierarchyLayers(nodes, links) {
     }
   }
 
-  // write back integer layers
   for (const n of nodes) {
     n.layer = Math.max(1, Math.floor(layer.get(n.id) || 1));
-  }
-}
-
-// arrange nodes in a hierarchical layout based on their assigned layers
-export function layoutHierarchy() {
-  const nodes = graph.nodes || [];
-  const links = graph.links || [];
-
-  
-  const needs = nodes.some(n => !Number.isFinite(n.layer));
-  if (needs) computeHierarchyLayers(nodes, links);
-
-  const { width, height } = canvasSize();
-  const TOP_PAD = 40, MIN_YGAP = 80, MAX_YGAP = 140, SIDE_PAD = 40, MIN_XGAP = 60;
-
-  
-  let Lmax = 1;
-  for (const n of nodes) if (Number.isFinite(n.layer)) Lmax = Math.max(Lmax, Math.floor(n.layer));
-
-  const rows = Math.max(1, Lmax);
-  const availableH = Math.max(1, height - TOP_PAD*2);
-  const gapY = Math.max(MIN_YGAP, Math.min(MAX_YGAP, rows > 1 ? (availableH / (rows - 1)) : availableH));
-  const startY = TOP_PAD;
-
-  
-  layerState = { enabled: true, startY, gapY, Lmax: rows, xGap: MIN_XGAP, sidePad: SIDE_PAD };
-
-  
-  const buckets = new Map();
-  for (const n of nodes) {
-    const L = Math.max(1, Number.isFinite(n.layer) ? Math.floor(n.layer) : 1);
-    if (!buckets.has(L)) buckets.set(L, []);
-    buckets.get(L).push(n);
-  }
-
-  
-  for (const [L, arr] of buckets) {
-    arr.sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' }));
-    const count = arr.length || 1;
-    const totalW = Math.max(0, (count - 1) * MIN_XGAP);
-    const startX = Math.max(SIDE_PAD, (width - totalW) / 2);
-    const y = startY + (L - 1) * gapY;
-
-    arr.forEach((n, i) => {
-      if (!Number.isFinite(n.x)) n.x = startX + i * MIN_XGAP;
-      n.y = y;
-      n.layer = L;
-      //n.fx = n.x; n.fy = n.y;
-    });
   }
 }

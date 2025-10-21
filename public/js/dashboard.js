@@ -1,5 +1,6 @@
 //this file handles the dashboard page
 import { apiGet, apiPost, apiPut, apiFetch, apiHandleAuthError, apiClearAuth } from './api.js';
+
 // here the program starts 
 (async function init() {
   const me = await apiGet('/api/me');
@@ -11,6 +12,7 @@ import { apiGet, apiPost, apiPut, apiFetch, apiHandleAuthError, apiClearAuth } f
 
   await loadTables();
 })();
+
 // this function loads the tables of owned and shared graphs
 async function loadTables() {
   const data = await apiGet('/api/graphs');
@@ -18,6 +20,7 @@ async function loadTables() {
   fillTable('ownedTbl', data.owned, true);
   fillTable('sharedTbl', data.shared, false);
 }
+
 // this function fills a table body with rows of graphs, adding buttons and handlers as needed
 function fillTable(tblId, rows, owned) {
   const tbody = document.querySelector(`#${tblId} tbody`);
@@ -31,7 +34,7 @@ function fillTable(tblId, rows, owned) {
       <td>
         <a href="./viewer.html#${g._id}"><button>Open</button></a>
         ${owned ? `
-          <button class="secondary shareBtn" data-id="${g._id}">Share</button>
+          <button class="secondary shareBtn" data-id="${g._id}" data-title="${escapeHtml(g.title || '')}">Share</button>
           <button class="secondary deleteBtn" data-id="${g._id}">Delete</button>
         ` : ''}
       </td>
@@ -39,15 +42,20 @@ function fillTable(tblId, rows, owned) {
     tbody.appendChild(tr);
   }
 
-  // this is the share handler (owner only)
+  // this is the share handler (owner only) – one dialog for username + role
   tbody.querySelectorAll('.shareBtn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.id;
-      const username = prompt('Share with username:');
-      if (!username) return;
-      const res = await apiPost(`/api/graphs/${id}/share`, { username });
+
+      // this opens the dialog and returns { username, role } or null if canceled
+      const picked = await pickShareUserAndRole(btn.dataset.title || '');
+      if (!picked) return;
+
+      const { username, role } = picked;
+      const res = await apiPost(`/api/graphs/${id}/share`, { username, role });
       if (res.error) return alert(res.error);
-      alert('Shared!');
+      alert(`Shared with @${username} as ${role}.`);
+      await loadTables();
     });
   });
 
@@ -70,10 +78,58 @@ function fillTable(tblId, rows, owned) {
     });
   });
 }
+
+// this shows one dialog to pick username and role; returns { username, role } or null
+async function pickShareUserAndRole(graphTitle) {
+  const dlg = document.getElementById('shareRoleDlg');
+  const form = document.getElementById('shareRoleForm');
+  const okBtn = document.getElementById('shareRoleOkBtn');
+  const title = document.getElementById('shareRoleTitle');
+  const userInput = document.getElementById('shareRoleUsername');
+  if (!dlg || !form || !okBtn || !title || !userInput) return null;
+
+  // this sets the dialog title and resets values
+  title.textContent = graphTitle ? `share “${graphTitle}”` : 'share access';
+  form.role.value = 'viewer';
+  userInput.value = '';
+  setTimeout(() => userInput.focus(), 0); // focus the input when dialog opens
+
+  // this allows pressing Enter in the input to submit ok
+  const enterToOk = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      dlg.returnValue = 'ok';
+      dlg.close('ok');
+    }
+  };
+  userInput.addEventListener('keydown', enterToOk);
+
+  // this shows the dialog and waits for close
+  const result = await new Promise((resolve) => {
+    const onClose = () => {
+      dlg.removeEventListener('close', onClose);
+      userInput.removeEventListener('keydown', enterToOk);
+      resolve(dlg.returnValue); // 'ok' or 'cancel'
+    };
+    dlg.addEventListener('close', onClose);
+    try { dlg.showModal(); } catch { dlg.show(); } // fallback if modal not supported
+  });
+
+  if (result !== 'ok') return null;
+
+  // this validates and returns the payload
+  let username = (userInput.value || '').trim().replace(/^@+/, '');
+  const role = form.role.value;
+  if (!username) return null;
+  if (role !== 'viewer' && role !== 'editor') return null;
+  return { username, role };
+}
+
 // prevents html injection in text
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
+
 // this function reads csv text into { headers, rows:[{ col:val, ...}, ...] }
 function simpleCsvParse(text) {
   const lines = text.split(/\r?\n/).filter(l => l.trim().length);
@@ -87,6 +143,7 @@ function simpleCsvParse(text) {
   });
   return { headers, rows };
 }
+
 // parses a number, returns null if invalid
 function parseNumber(v) {
   const n = Number(v);

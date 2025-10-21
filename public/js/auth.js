@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const username = document.getElementById('suUser').value.trim();
       const password = document.getElementById('suPass').value.trim();
 
-      // NOTE: unauthenticated call → pass { auth:false }
+      //unauthenticated call  passes { auth:false }
       const res = await apiPost('/auth/signup', { username, password }, { auth: false });
       if (res.error) return alert(res.error);
 

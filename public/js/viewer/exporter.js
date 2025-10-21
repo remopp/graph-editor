@@ -12,15 +12,16 @@ function csvCell(v) {
 
 // this builds a single-file CSV representation of the current graph
 function buildSingleFileCSV() {
-  // record,id,label,x,y,source,target,weight,type
+  // record,id,label,description,x,y,source,target,weight,type
   const includeWeight = (graph.type === 'force');
-  const lines = ['record,id,label,x,y,source,target,weight,type'];
+  const lines = ['record,id,label,description,x,y,source,target,weight,type'];
 
   const gType = (graph.type || '').toString().trim().toLowerCase() || 'force';
   lines.push([
     'meta',   // record
     '',       // id
     '',       // label
+    '',       // description
     '',       // x
     '',       // y
     '',       // source
@@ -29,7 +30,7 @@ function buildSingleFileCSV() {
     csvCell(gType) // type
   ].join(','));
 
-  // --- node rows id, label, x, y
+  // node rows id, label, description, x, y
   const nodesSorted = [...(graph.nodes || [])].sort((a,b) =>
     String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' })
   );
@@ -37,11 +38,12 @@ function buildSingleFileCSV() {
   for (const n of nodesSorted) {
     const id = csvCell(n.id);
     const label = csvCell(n.label || '');
+    const desc = csvCell(n.description || ''); // keep description
     const x = Number.isFinite(n.x) ? n.x : '';
     const y = Number.isFinite(n.y) ? n.y : '';
     lines.push([
       'node',
-      id, label, x, y,
+      id, label, desc, x, y,
       '', '', '', '' // source,target,weight,type
     ].join(','));
   }
@@ -59,7 +61,8 @@ function buildSingleFileCSV() {
 
     lines.push([
       'edge',        // record
-      '', '', '', '',// id,label,x,y
+      '', '', '', '',// id,label,description,x
+      '',            // y
       csvCell(s),    // source
       csvCell(t),    // target
       w,             // weight

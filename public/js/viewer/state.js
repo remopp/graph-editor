@@ -60,7 +60,8 @@ export function scheduleDraw() {
         drawFn = mod.draw;
       }
       if (typeof drawFn === 'function') drawFn();
-    } catch (err) {
+    } 
+    catch (err) {
       console.warn('scheduleDraw(): failed to draw', err);
     }
   });
