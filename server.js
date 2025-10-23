@@ -209,7 +209,7 @@ app.put('/api/graphs/:id', requireAuth, async (req, res) => {
   if (typeof req.body.title === 'string') patch.title = req.body.title;
   if (typeof req.body.type === 'string')  patch.type = req.body.type;
 
-  //this merges nodes by id and keeps old description if new one is missing
+  // Merge behavior: positions-only updates merge; full saves replace
   if (Array.isArray(req.body.nodes)) {
     const incoming = req.body.nodes.map(n => ({
       id: String(n.id),
@@ -222,21 +222,28 @@ app.put('/api/graphs/:id', requireAuth, async (req, res) => {
       layer: (typeof n.layer === 'number' ? n.layer : undefined),
     }));
 
-    const byId = new Map((graph.nodes || []).map(n => [String(n.id), n]));
-    const merged = incoming.map(n => {
-      const prev = byId.get(String(n.id)) || {};
-      return {
-        ...prev,
-        ...n,
-        description: (n.description == null ? prev.description : n.description),
-      };
-    });
+    const treatAsFullReplace = Array.isArray(req.body.links);
+    if (treatAsFullReplace) {
+      // Full save from client: honor deletions and ID changes by replacing set
+      patch.nodes = incoming;
+    } else {
+      // Positions-only: merge by id, preserve description, keep unspecified nodes
+      const byId = new Map((graph.nodes || []).map(n => [String(n.id), n]));
+      const merged = incoming.map(n => {
+        const prev = byId.get(String(n.id)) || {};
+        return {
+          ...prev,
+          ...n,
+          description: (n.description == null ? prev.description : n.description),
+        };
+      });
 
-    const mentioned = new Set(incoming.map(n => String(n.id)));
-    for (const old of (graph.nodes || [])) {
-      if (!mentioned.has(String(old.id))) merged.push(old); // keep nodes that were not sent
+      const mentioned = new Set(incoming.map(n => String(n.id)));
+      for (const old of (graph.nodes || [])) {
+        if (!mentioned.has(String(old.id))) merged.push(old); // keep nodes that were not sent
+      }
+      patch.nodes = merged;
     }
-    patch.nodes = merged;
   }
 
   //this normalizes links (like in create)

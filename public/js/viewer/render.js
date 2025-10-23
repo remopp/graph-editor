@@ -55,13 +55,16 @@ function drawLayerGuides() {
 let nodesById = new Map();
 
 // Main draw function: clear, apply pan/zoom, draw links, draw nodes
-export function draw() {
+export function draw() { 
+  
+  clearCanvas();
+  
   if (!graph.nodes || graph.nodes.length === 0) return;
 
   //this builds a fast id to node map once per frame to avoid repeated linear searches while rendering
   nodesById = new Map((graph.nodes || []).map(n => [n.id, n]));
 
-  clearCanvas();
+ 
 
   ctx.save();
   ctx.translate(transform.x, transform.y);

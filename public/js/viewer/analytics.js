@@ -1,5 +1,5 @@
 //this module contains shortest path logic, the path-highlighting state used by the renderer,
-//and simple centrality analytics (degree + pagerank)
+//and simple centrality analytics (degree and pagerank)
 
 import { graph, setSelection, scheduleDraw } from './state.js';
 
@@ -39,7 +39,7 @@ export function shortestPath(srcId, dstId, g = graph) {
   const src = id2idx.get(String(srcId));
   const dst = id2idx.get(String(dstId));
 
-  //this is the plain dijkstra loop (array-based priority for simplicity)
+  //this is the plain dijkstra loop (array based priority for simplicity)
   const dist = new Array(n).fill(Infinity);
   const prev = new Array(n).fill(-1);
   const used = new Array(n).fill(false);
@@ -87,7 +87,7 @@ export function clearPathHighlight() {
   try { setSelection([]); scheduleDraw(); } catch {}
 }
 
-//this computes degree centrality; mode = 'total' | 'in' | 'out'. accepts an optional graph.
+//this computes degree centrality; mode = total or in or out. accepts an optional graph.
 export function degreeCentrality(mode = 'total', g = graph) {
   const nodes = g?.nodes || [];
   const links = g?.links || [];

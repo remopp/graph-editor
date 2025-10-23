@@ -1,4 +1,4 @@
-// node & edge operations + selection panel + link utilities.
+// node and edge operations , selection panel and link utilities.
 
 import {
   selInfo, newNodeId, newNodeLabel, addNodeBtn,
@@ -27,13 +27,13 @@ export function idOf(ref) {
 function getNodeById(id) {
   return (graph.nodes || []).find(n => n.id === id);
 }
-// this validates a single edge (sNode -> tNode) for hierarchy rules
+// this validates a single edge (source Node to target Node) for hierarchy rules
 function validateHierarchyEdge(sNode, tNode) {
   const sL = Number(sNode?.layer), tL = Number(tNode?.layer);
   if (!Number.isFinite(sL) || !Number.isFinite(tL)) {
     return { ok: false, msg: 'Both nodes must have a valid integer layer.' };
   }
-  if (sL === tL) return { ok: false, msg: 'No same-layer edges allowed in hierarchy.' };
+  if (sL === tL) return { ok: false, msg: 'No same layer edges allowed in hierarchy.' };
   if (sL >= tL) return { ok: false, msg: 'Edges must go downward (source layer < target layer).' };
   return { ok: true };
 }
@@ -71,7 +71,7 @@ export function normalizeLinks() {
 export function findEdgeIndexByIds(s, t) {
   return (graph.links || []).findIndex(e => idOf(e.source) === s && idOf(e.target) === t);
 }
-// this removes duplicate edges in place, keeping only one edge per (source -> target)
+// this removes duplicate edges in place, keeping only one edge per (source to target)
 export function dedupeLinksInPlace() {
   const seen = new Set();
   for (let i = (graph.links?.length || 0) - 1; i >= 0; i--) {
