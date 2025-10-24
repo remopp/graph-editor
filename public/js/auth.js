@@ -11,15 +11,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const username = document.getElementById('suUser').value.trim();
       const password = document.getElementById('suPass').value.trim();
 
-      //unauthenticated call  passes { auth:false }
+      //unauthenticated call  
       const res = await apiPost('/auth/signup', { username, password }, { auth: false });
       if (res.error) return alert(res.error);
 
-      // server should return { token, username }
+      // server should return  token and username 
       apiSaveAuth(res.token, res.username);
       location.href = './dashboard.html';
     });
-  }
+  } 
 
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
