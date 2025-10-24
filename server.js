@@ -288,7 +288,7 @@ app.post('/api/graphs/:id/share', requireAuth, async (req, res) => {
     { $set: { shares, updatedAt: new Date() } }
   );
 
-  //this keeps old type list for back-compat (acts like viewer)
+  //this keeps old type list for back compat (acts like viewer)
   await Graphs.updateOne(
     { _id: graph._id },
     { $addToSet: { sharedWithUsernames: username } }
