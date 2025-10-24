@@ -34,7 +34,7 @@ function makeToken(user) {
   return jwt.sign({ uid: user._id.toString(), username: user.username }, JWT_SECRET, { expiresIn: '7d' });
 }
 
-//this middleware checks the token and sets req.auth = { uid, username }
+//this middleware checks the token
 function requireAuth(req, res, next) {
   const hdr = req.headers.authorization || '';
   const [, token] = hdr.split(' ');
@@ -62,10 +62,10 @@ function canReadGraph(user, graph) {
   return (graph.shares || []).some(s => s?.username === user.username); // viewer or editor
 }
 
-//this checks if the user can edit (owner or share role = editor)
+//this checks if the user can edit (owner or share role is editor)
 function isEditor(user, graph) {
   if (!graph) return false;
-  if (isOwner(user, graph)) return true; // owner counts as editor
+  if (isOwner(user, graph)) return true;
   return (graph.shares || []).some(s => s?.username === user.username && s?.role === 'editor');
 }
 
@@ -107,7 +107,7 @@ app.get('/api/me', requireAuth, async (req, res) => {
   res.json({ username: me.username });
 });
 
-//this lists owned graphs and graphs shared with the user (old type + new)
+//this lists owned graphs and graphs shared with the user (old type and new (with the viewer/editor role))
 app.get('/api/graphs', requireAuth, async (req, res) => {
   const me = { uid: req.auth.uid, username: req.auth.username };
 
@@ -119,8 +119,8 @@ app.get('/api/graphs', requireAuth, async (req, res) => {
   const shared = await Graphs.find({
     ownerUserId: { $ne: new ObjectId(me.uid) },
     $or: [
-      { sharedWithUsernames: me.username },                 // old type shares (all viewers)
-      { shares: { $elemMatch: { username: me.username } } } // new role shares (viewer or editor)
+      { sharedWithUsernames: me.username },
+      { shares: { $elemMatch: { username: me.username } } }
     ]
   })
     .project({ title: 1, updatedAt: 1, type: 1 })
@@ -169,8 +169,8 @@ app.post('/api/graphs', requireAuth, async (req, res) => {
     type: type || 'force',
     nodes: cleanNodes,
     links: cleanLinks,
-    shares: [],                 // new shares array: [{ username, role: 'viewer'|'editor' }]
-    sharedWithUsernames: [],    // old type list (still kept for compatibility)
+    shares: [],
+    sharedWithUsernames: [],
     createdAt: new Date(),
     updatedAt: new Date(),
   };

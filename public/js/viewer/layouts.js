@@ -4,7 +4,7 @@ import { canvas } from './dom.js';
 import { graph, scheduleDraw } from './state.js';
 
 let sim = null;
-// stop any running simulation (kept as a harmless no-op)
+// stop any running simulation
 export function stopSim() {
   if (sim && typeof sim.stop === 'function') sim.stop();
   sim = null;
@@ -20,7 +20,7 @@ export function allHavePositions() {
   return (graph.nodes || []).length > 0 &&
          (graph.nodes || []).every(n => Number.isFinite(n.x) && Number.isFinite(n.y));
 }
-// asign initial positon to nodes without x/y (in a circle)
+// asign initial positon to nodes without x/y
 export function seedPositions() {
   const { width, height } = canvasSize();
   const cx = width / 2, cy = height / 2;
@@ -137,7 +137,7 @@ function ensureLayerState() {
     sidePad: 40,
   };
 }
-// get the y-coordinate for a given layer number
+// get the y coordinate for a given layer number
 export function yForLayer(L) {
   ensureLayerState();
   return layerState.startY + (Math.max(1, Math.floor(L)) - 1) * layerState.gapY;
@@ -194,7 +194,7 @@ export function layoutHierarchy() {
   }
 }
 
-// compute layers for all nodes based on edges (Kahn topological sort)
+// compute layers for all nodes based on edges
 export function computeHierarchyLayers(nodes, links) {
   const idToNode = new Map(nodes.map(n => [n.id, n]));
   const out = new Map(nodes.map(n => [n.id, []]));

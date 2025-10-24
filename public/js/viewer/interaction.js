@@ -8,9 +8,9 @@ import { savePositionsDebounced } from './persistence.js';
 
 let lastPointerDown = { x: 0, y: 0 };
 let dragGroup = null;
-//this function sets up zoom and drag behavior on the canvas using d3.js
+//this function sets up zoom and drag behavior on the canvas
 export function setupZoomAndDrag() {
-  //here the zoom behavior is defined using d3.js
+  //here the zoom behavior is defined
   const zoom = d3.zoom()
     .filter(ev => {
       if (ev.type === 'wheel') return true;
@@ -30,7 +30,7 @@ export function setupZoomAndDrag() {
   d3.select(canvas).call(zoom);
   setZoomBehavior(zoom);
 
-  // here the drag behavior is defined using d3.js
+  // here the drag behavior is defined 
   d3.select(canvas).call(
     d3.drag()
       .container(canvas)
@@ -97,11 +97,10 @@ function dragstarted(event) {
     const nodes = graph.nodes || [];
     dragGroup = nodes.filter(x => selectedIds.has(x.id));
   } else {
-    setSelection?.([n.id]); // keep it resilient if setSelection isn't imported
+    setSelection?.([n.id]);
     dragGroup = [n];
   }
 
-  // Per-node offsets + starting layer (for revert/snap)
   for (const g of dragGroup) {
     g._dragOff = { dx: (g.x || 0) - gx, dy: (g.y || 0) - gy };
     g._startLayer = Math.max(1, Math.floor(g.layer) || 1);
@@ -110,7 +109,7 @@ function dragstarted(event) {
   n._captured = false; // one history entry per gesture
 }
 
-// update node position as it's being dragged
+// update node position as its being dragged
 function dragged(event) {
   const n = event.subject; if (!n) return;
 

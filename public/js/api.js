@@ -1,5 +1,5 @@
 //saves/reads the login token and auto-attaches Authorization.
-// Wraps fetch to handle JSON and return data or {error}.
+// Wraps fetch to handle JSON and return data or error.
 
 const LS_TOKEN = 'ge_token';
 const LS_USER  = 'ge_username';
@@ -46,12 +46,12 @@ export async function apiFetch(path, options = {}) {
   headers = { ...headers, ...authHeaders(auth) };
   return fetch(path, { ...rest, headers });
 }
-// this function is used to read JSON from a fetch Response, returns { error: 'Bad JSON' } on failure
+// this function is used to read JSON from a fetch Response, returns error 'Bad JSON' on failure
 async function readJson(res) {
   try { return await res.json(); }
   catch { return { error: 'Bad JSON' }; }
 }
-// this function reads JSON and returns { error: '...' } if the response was not ok
+// this function reads JSON and returns  error if the response was not ok
 async function toJsonOrError(res) {
   const data = await readJson(res);
   if (!res.ok) {
@@ -61,7 +61,7 @@ async function toJsonOrError(res) {
 }
 
 
-//this function sends a GET, POST, PUT, or DELETE request to your server and returns the JSON response or { error: '...' }  
+//this function sends a GET, POST, PUT, or DELETE request to the server and returns the JSON response or  error  
 export async function apiGet(path, options) {
   const res = await apiFetch(path, { method: 'GET', ...(options || {}) });
   return toJsonOrError(res);

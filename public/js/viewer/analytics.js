@@ -6,14 +6,33 @@ import { graph, setSelection, scheduleDraw } from './state.js';
 //this keeps track of which nodes/edges are currently highlighted (renderer reads this)
 let _pathHighlight = { nodes: new Set(), edges: new Set() };
 //this returns the current highlight sets (used by render.js to style path)
-export function getPathHighlight() { return _pathHighlight; }
+export function getPathHighlight() {
+  const edgeIdxSet = new Set();
+  if (_pathHighlight && _pathHighlight.edges && graph?.links) {
+    for (let i = 0; i < graph.links.length; i++) {
+      const e = graph.links[i];
+      const sId = (typeof e.source === 'object') ? e.source.id : e.source;
+      const tId = (typeof e.target === 'object') ? e.target.id : e.target;
+      const key = `${sId}->${tId}`;
+      if (_pathHighlight.edges.has(key)) {
+        edgeIdxSet.add(i);
+      }
+    }
+  }
+
+  const nodeIdSet = _pathHighlight?.nodes || new Set();
+  return {
+    edges: edgeIdxSet,
+    nodes: nodeIdSet,
+  };
+}
 
 //this helper selects nodes in the ui and requests a redraw
 function highlightNodes(ids) {
   try { setSelection(ids); scheduleDraw(); } catch {}
 }
 
-//this computes the shortest path using dijkstra (weights if present, else 1). it treats edges as undirected.
+// this computes the shortest path using Dijkstra.
 export function shortestPath(srcId, dstId, g = graph) {
   const nodes = g?.nodes || [];
   const links = g?.links || [];
@@ -21,64 +40,94 @@ export function shortestPath(srcId, dstId, g = graph) {
 
   const id2idx = new Map(nodes.map((n, i) => [String(n.id), i]));
   const n = nodes.length;
-  if (!id2idx.has(String(srcId)) || !id2idx.has(String(dstId))) return { ok: false, msg: 'id not found' };
+  if (!id2idx.has(String(srcId)) || !id2idx.has(String(dstId))) {
+    return { ok: false, msg: 'id not found' };
+  }
 
-  //this builds an undirected adjacency list with weights
   const adj = Array.from({ length: n }, () => []);
   for (const e of links) {
-    const s = typeof e.source === 'object' ? e.source.id : e.source;
-    const t = typeof e.target === 'object' ? e.target.id : e.target;
-    const w = (e.weight != null && Number.isFinite(Number(e.weight))) ? Number(e.weight) : 1;
-    const si = id2idx.get(String(s));
-    const ti = id2idx.get(String(t));
+    // normalize source/target to ids
+    const sId = (typeof e.source === 'object') ? e.source.id : e.source;
+    const tId = (typeof e.target === 'object') ? e.target.id : e.target;
+
+    const si = id2idx.get(String(sId));
+    const ti = id2idx.get(String(tId));
     if (si == null || ti == null) continue;
+
+    // edge weight is by default 1 if missing or bad
+    const wNum = Number(e.weight);
+    const w = Number.isFinite(wNum) ? wNum : 1;
+
     adj[si].push({ j: ti, w });
-    adj[ti].push({ j: si, w });
   }
 
   const src = id2idx.get(String(srcId));
   const dst = id2idx.get(String(dstId));
 
-  //this is the plain dijkstra loop (array based priority for simplicity)
   const dist = new Array(n).fill(Infinity);
   const prev = new Array(n).fill(-1);
   const used = new Array(n).fill(false);
   dist[src] = 0;
 
   for (let k = 0; k < n; k++) {
-    let u = -1, best = Infinity;
-    for (let i = 0; i < n; i++) if (!used[i] && dist[i] < best) { best = dist[i]; u = i; }
-    if (u === -1) break;
+    // pick unused node with best dist
+    let u = -1;
+    let best = Infinity;
+    for (let i = 0; i < n; i++) {
+      if (!used[i] && dist[i] < best) {
+        best = dist[i];
+        u = i;
+      }
+    }
+    if (u === -1) break;     // no reachable nodes left
     used[u] = true;
-    if (u === dst) break;
+    if (u === dst) break;    // we reached target, we can stop early
+
 
     for (const { j, w } of adj[u]) {
-      const nd = dist[u] + Math.max(0, w);
-      if (nd < dist[j]) { dist[j] = nd; prev[j] = u; }
+      const step = Math.max(0, w);
+      const nd = dist[u] + step;
+      if (nd < dist[j]) {
+        dist[j] = nd;
+        prev[j] = u;
+      }
     }
   }
 
-  if (!Number.isFinite(dist[dst])) return { ok: false, msg: 'no path' };
+  if (!Number.isFinite(dist[dst])) {
+    return { ok: false, msg: 'no path' };
+  }
 
-  //this reconstructs the path order (indices to ids)
   const order = [];
-  for (let v = dst; v !== -1; v = prev[v]) order.push(v);
+  for (let v = dst; v !== -1; v = prev[v]) {
+    order.push(v);
+  }
   order.reverse();
 
   const nodeIds = order.map(i => nodes[i].id);
-  const edgeList = order.slice(1).map((v, k) => ({ source: nodes[order[k]].id, target: nodes[v].id }));
 
-  //this updates the path highlight store for the renderer
+  const edgeList = [];
+  for (let k = 0; k < order.length - 1; k++) {
+    const a = nodes[order[k]].id;
+    const b = nodes[order[k + 1]].id;
+    edgeList.push({ source: a, target: b });
+  }
+
   _pathHighlight = {
     nodes: new Set(nodeIds),
-    edges: new Set(edgeList.map(e => `${e.source}->${e.target}`))
+    edges: new Set(edgeList.map(e => `${e.source}->${e.target}`)),
   };
 
-  //this mirrors highlight into the ui selection
   highlightNodes(nodeIds);
 
-  return { ok: true, total: dist[dst], nodes: nodeIds, edges: edgeList };
+  return {
+    ok: true,
+    total: dist[dst],
+    nodes: nodeIds,
+    edges: edgeList
+  };
 }
+
 
 //this clears the path highlight and ui selection
 export function clearPathHighlight() {

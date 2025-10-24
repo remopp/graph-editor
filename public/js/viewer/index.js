@@ -78,7 +78,7 @@ import { shortestPath, clearPathHighlight, degreeCentrality, pageRank } from './
     saveBtn.title = 'You have viewer access (read-only)';
   }
 
-  //this shows shortest-path ui as enabled only for force type
+  //this shows shortest path ui as enabled only for force type
   updateShortestPathInteractivity();
 
   //this creates a tiny default graph if nothing is loaded
@@ -104,11 +104,11 @@ import { shortestPath, clearPathHighlight, degreeCentrality, pageRank } from './
   
   // keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z = redo
   window.addEventListener('keydown', (e) => {
-    // don’t steal keys while typing in inputs/textareas/contenteditable
+    // don’t steal keys while typing in inputs,textareas or contenteditable
     const a = document.activeElement;
     if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)) return;
 
-    const mod = e.ctrlKey || e.metaKey;                 // Ctrl on Win/Linux, Cmd on macOS
+    const mod = e.ctrlKey || e.metaKey;
     const isZ = (e.key || '').toLowerCase() === 'z';
     if (!mod || !isZ) return;
 
@@ -152,7 +152,7 @@ function setupShortestPathUI() {
   });
 }
 
-//this enables or disables shortest-path inputs based on the current graph type
+//this enables or disables shortest path inputs based on the current graph type
 function updateShortestPathInteractivity() {
   const isForce = (graph.type === 'force');
 

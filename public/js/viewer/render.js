@@ -55,16 +55,11 @@ function drawLayerGuides() {
 let nodesById = new Map();
 
 // Main draw function: clear, apply pan/zoom, draw links, draw nodes
-export function draw() { 
-  
+export function draw() {
   clearCanvas();
-  
   if (!graph.nodes || graph.nodes.length === 0) return;
 
-  //this builds a fast id to node map once per frame to avoid repeated linear searches while rendering
   nodesById = new Map((graph.nodes || []).map(n => [n.id, n]));
-
- 
 
   ctx.save();
   ctx.translate(transform.x, transform.y);
@@ -75,11 +70,12 @@ export function draw() {
   const links = graph.links || [];
   const nodes = graph.nodes || [];
 
-  //this gets the current shortest-path highlight (edge indices and node ids) so we can emphasize them
+  // shortest-path highlight sets
   const { edges: hlEdges, nodes: hlNodes } = getPathHighlight();
 
   if (isDragging) {
-    // Fast path while dragging: simple lines (no arrows/labels) for performance
+    
+    // draw all edges as thin lines
     ctx.strokeStyle = '#7aa0ff55';
     ctx.lineWidth = 1.2;
     for (let i = 0; i < links.length; i++) {
@@ -92,7 +88,7 @@ export function draw() {
       ctx.stroke();
     }
 
-    //this overlay ensures the highlighted shortest path remains clearly visible even while dragging
+    // overlay highlighted path edges thicker/yellow LAST (so they sit on top)
     if (hlEdges.size > 0) {
       for (const i of hlEdges) {
         const e = links[i];
@@ -108,17 +104,33 @@ export function draw() {
       }
     }
   } else {
-    // Full arrows + optional weight labels; edges that are part of the shortest path are drawn thicker and brighter
+
+    // draw all non highlight edges normally
     for (let i = 0; i < links.length; i++) {
       const e = links[i];
       const s = getNode(e.source), t = getNode(e.target);
       if (!s || !t) continue;
+
       const isHL = hlEdges.has(i);
-      drawArrowLink(s, t, e.weight, isHL);
+      if (isHL) continue; 
+
+      drawArrowLink(s, t, e.weight, false);
+    }
+
+    //this hioghkights the edges that are part of the shortest path
+    for (let i = 0; i < links.length; i++) {
+      const e = links[i];
+      const s = getNode(e.source), t = getNode(e.target);
+      if (!s || !t) continue;
+
+      const isHL = hlEdges.has(i);
+      if (!isHL) continue;
+
+      drawArrowLink(s, t, e.weight, true);
     }
   }
 
-  // Draw nodes, with an extra emphasis if they are part of the shortest path
+  // draw nodes (selected or in path get rings etc)
   for (const n of nodes) {
     const isSelected = (n === selectedNode) || selectedIds.has(n.id);
     const isPathHighlighted = hlNodes.has(n.id);
@@ -141,7 +153,7 @@ export function drawArrowLink(s, t, weight, highlight = false) {
   const dy = (t.y || 0) - (s.y || 0);
   const ang = Math.atan2(dy, dx);
 
-  // Start at source rim; end just before target rim (for arrow head)
+  // Start at source rim, end just before target rim (for arrow head)
   const sx = (s.x || 0) + Math.cos(ang) * NODE_R;
   const sy = (s.y || 0) + Math.sin(ang) * NODE_R;
   const tipX = (t.x || 0) - Math.cos(ang) * NODE_R;
@@ -182,7 +194,7 @@ export function drawArrowLink(s, t, weight, highlight = false) {
   }
 }
 
-// Draw a node as a circle with optional label; highlight if selected
+// Draw a node as a circle with optional label, highlight if selected
 export function drawNode(n, isSelected, isPathHighlighted = false) {
   // base circle
   ctx.beginPath();
@@ -190,7 +202,7 @@ export function drawNode(n, isSelected, isPathHighlighted = false) {
   ctx.arc(n.x || 0, n.y || 0, NODE_R, 0, Math.PI * 2);
   ctx.fill();
 
-  // unified selection ring (focused OR multi-selected)
+  // unified selection ring (focused OR multi selected)
   if (isSelected) {
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 2;
@@ -199,7 +211,7 @@ export function drawNode(n, isSelected, isPathHighlighted = false) {
     ctx.stroke();
   }
 
-  //this extra ring makes shortest-path nodes easy to spot even when not selected
+  //this extra ring makes shortest path nodes easy to spot even when not selected
   if (isPathHighlighted) {
     ctx.strokeStyle = '#ffd54a';
     ctx.lineWidth = 3;

@@ -48,7 +48,6 @@ export function validateLayerChange(node, newLayer) {
     const sId = idOf(e.source);
     const tId = idOf(e.target);
 
-    // this builds hypothetical sNode/tNode with proposed L for `node`
     const sNode = (sId === node.id) ? { ...node, layer: L } : getNodeById(sId);
     const tNode = (tId === node.id) ? { ...node, layer: L } : getNodeById(tId);
 
@@ -122,8 +121,6 @@ export function refreshNodeIdDatalist() {
   }
 }
 
-//click to place new node
-
 // this holds the pending new node data while waiting for the user to click on the canvas
 let pendingNodePlacement = null;
 
@@ -133,7 +130,7 @@ function clientToGraph(clientX, clientY) {
   const cssX = clientX - rect.left;
   const cssY = clientY - rect.top;
 
-  // important: transform.x/y are in css pixels; do not convert to device pixels here
+  // transform.x/y are in css pixels. do not convert to device pixels here
   const gx = (cssX - transform.x) / transform.k;
   const gy = (cssY - transform.y) / transform.k;
   return { x: gx, y: gy };
@@ -198,12 +195,11 @@ function startAddNodePlacement() {
   pendingNodePlacement = { id, label, description };
   canvas.style.cursor = 'crosshair';
 
-  // this captures the very next pointerdown and auto-removes; prevents drag/zoom from stealing it
+  // this captures the very next pointerdown and auto removes, prevents drag/zoom from stealing it
   canvas.addEventListener('pointerdown', onCanvasPointerDownToPlace, { capture: true, once: true });
   window.addEventListener('keydown', onKeyDownCancelPlacement, true);
 }
 
-// end click to place new node 
 
 // this applys the changes made in the edit node panel to the selected node
 function onApplyEdit() {
@@ -229,7 +225,7 @@ function onApplyEdit() {
     if (e.target === oldId) e.target = newIdVal;
   }
 
-  // this determines requested layer (if any)
+  // this determines requested layer
   let willChangeLayer = false;
   let requestedLayer = selectedNode.layer;
   if (graph.type === 'hierarchy' && editNodeLayer) {
@@ -237,10 +233,10 @@ function onApplyEdit() {
     if (Number.isFinite(Lraw) && Lraw >= 1 && Lraw !== selectedNode.layer) {
       willChangeLayer = true;
       requestedLayer = Lraw;
-      // this pre-validates the layer change against all incident edges
+      // this pre validates the layer change against all incident edges
       const v = validateLayerChange(selectedNode, requestedLayer);
       if (!v.ok) {
-        // this blocks only the layer change, but allows id/label/description updates
+        // this blocks only the layer change, but allows id,label and description updates
         if (editNodeLayer) editNodeLayer.value = selectedNode.layer ?? '';
         alert(v.msg);
         willChangeLayer = false;
@@ -300,13 +296,13 @@ function onAddOrUpdateEdge() {
   if (idx !== -1) {
     // this updates weight for existing edge (force only)
     if (isForce) {
-      if (wStr === '') return; // no change requested
+      if (wStr === '') return;
       const newW = Number(wStr);
       if (Number.isNaN(newW)) return alert('Weight must be a number');
       historyCapture('update edge');
       graph.links.splice(idx, 1, { source: s, target: t, weight: newW });
     } else {
-      // non-force graphs ignore weights and don’t allow duplicates
+      // non force graphs ignore weights and dont allow duplicates
       return;
     }
   } else {

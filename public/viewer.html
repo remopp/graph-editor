@@ -15,7 +15,6 @@
       touch-action: none;
       cursor: grab;
     }
-
     .muted { color:#9db0e2; font-size:.9rem; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .small { font-size:.85rem; }
@@ -23,7 +22,6 @@
     .rowh { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
     label span { display:block; margin-bottom:.2rem; }
     input[type="number"] { width:6rem; }
-
     details.dropdown { position: relative; }
     details.dropdown > summary { list-style: none; cursor: pointer; }
     details.dropdown > summary::-webkit-details-marker { display:none; }
@@ -42,7 +40,6 @@
       background: #0b1022;
       box-shadow: 0 10px 30px rgba(0,0,0,.35);
     }
-
     .btn[disabled], button[disabled], input[disabled] { opacity: .5; pointer-events: none; }
   </style>
 </head>
@@ -55,7 +52,6 @@
         <button id="logoutBtn" class="secondary">Log out</button>
       </div>
     </div>
-
     <div class="card">
       <div class="toolbar">
         <span>Type: <span id="typeBadge" class="badge"></span></span>
@@ -64,7 +60,6 @@
         <button id="saveBtn">Save</button>
         <button id="undoBtn" class="btn">Undo</button>
         <button id="redoBtn" class="btn">Redo</button>
-
         <details id="searchDropdown" class="dropdown">
           <summary class="btn">Search</summary>
           <div class="menu">
@@ -87,7 +82,6 @@
             </div>
           </div>
         </details>
-
         <details class="dropdown">
           <summary class="btn">Node Editor</summary>
           <div class="menu">
@@ -96,7 +90,6 @@
                 <strong>Selected:</strong>
                 <span id="selInfo" class="mono small">(none)</span>
               </div>
-
               <div class="form-section">
                 <h4 class="section-title">Create node</h4>
                 <div class="rowh wrap">
@@ -117,7 +110,6 @@
                 </label>
                 <p class="muted small">tip: ids must be unique. labels are free text.</p>
               </div>
-
               <div class="form-section">
                 <h4 class="section-title">Edit selected node</h4>
                 <div class="rowh wrap">
@@ -149,7 +141,6 @@
             </div>
           </div>
         </details>
-
         <details class="dropdown">
           <summary class="btn">Edge Editor</summary>
           <div class="menu">
@@ -176,14 +167,10 @@
             </div>
           </div>
         </details>
-
-        <!-- Analytics (with sub-dropdowns) -->
         <details id="analyticsDropdown" class="dropdown">
           <summary class="btn">Analytics</summary>
           <div class="menu">
             <div class="rowv">
-
-              <!-- sub: Shortest Path -->
               <details class="sub">
                 <summary>Shortest Path</summary>
                 <div class="sub-body">
@@ -205,8 +192,6 @@
                   <p id="spHint" class="muted small"></p>
                 </div>
               </details>
-
-              <!-- sub: Degree Centrality -->
               <details class="sub">
                 <summary>Degree Centrality</summary>
                 <div class="sub-body">
@@ -225,8 +210,6 @@
                   <pre id="degOut" class="mono small"></pre>
                 </div>
               </details>
-
-              <!-- sub: PageRank -->
               <details class="sub">
                 <summary>PageRank</summary>
                 <div class="sub-body">

@@ -2,8 +2,8 @@
 
 // The graph object holds nodes and links, plus metadata like type and title.
 export const graph = {
-  nodes: [],   // [{ id, label?, x?, y?, layer? }]
-  links: [],   // [{ source, target, weight? }]
+  nodes: [],   // [{ id, label, x, y, layer }]
+  links: [],   // [{ source, target, weight }]
   type: 'force',
   title: '',
 };
@@ -30,7 +30,7 @@ export function setSelectedNodeValue(n) { selectedNode = n; }
 export let isDragging = false;
 export function setIsDragging(v) { isDragging = !!v; }
 
-// Current d3 zoom transform (x,y = translation; k = scale)
+// Current d3 zoom transform (x,y = translation, k = scale)
 export let transform = d3.zoomIdentity; // {x, y, k}
 export function setTransform(t) { transform = t; }
 
@@ -55,7 +55,6 @@ export function scheduleDraw() {
     drawQueued = false;
     try {
       if (!drawFn) {
-        // Lazy-load to avoid ESM circular import issues.
         const mod = await import('./render.js');
         drawFn = mod.draw;
       }
@@ -70,7 +69,7 @@ export function scheduleDraw() {
 
 // SEARCH
 export let searchMatches = new Set();           // ids of matched nodes
-export let searchIndex = 0;                     // which match is “active”
+export let searchIndex = 0;
 export function setSearchResults(ids, index=0){ 
   searchMatches = new Set(ids);
   searchIndex = Math.max(0, Math.min(index, ids.length-1));

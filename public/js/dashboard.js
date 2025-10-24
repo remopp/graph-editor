@@ -42,12 +42,11 @@ function fillTable(tblId, rows, owned) {
     tbody.appendChild(tr);
   }
 
-  // this is the share handler (owner only) – one dialog for username + role
+  // this is the share handler (owner only)
   tbody.querySelectorAll('.shareBtn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.id;
 
-      // this opens the dialog and returns { username, role } or null if canceled
       const picked = await pickShareUserAndRole(btn.dataset.title || '');
       if (!picked) return;
 
@@ -65,8 +64,6 @@ function fillTable(tblId, rows, owned) {
       const id = btn.dataset.id;
       const ok = confirm('Delete this graph? This removes it for anyone it was shared with.');
       if (!ok) return;
-
-      // use the low-level fetch helper
       const resp = await apiFetch(`/api/graphs/${id}`, { method: 'DELETE' });
       if (!resp.ok) {
         let msg = 'Delete failed';
@@ -79,7 +76,7 @@ function fillTable(tblId, rows, owned) {
   });
 }
 
-// this shows one dialog to pick username and role; returns { username, role } or null
+// this shows one dialog to pick username and role, returns  username and role  or null
 async function pickShareUserAndRole(graphTitle) {
   const dlg = document.getElementById('shareRoleDlg');
   const form = document.getElementById('shareRoleForm');
@@ -109,7 +106,7 @@ async function pickShareUserAndRole(graphTitle) {
     const onClose = () => {
       dlg.removeEventListener('close', onClose);
       userInput.removeEventListener('keydown', enterToOk);
-      resolve(dlg.returnValue); // 'ok' or 'cancel'
+      resolve(dlg.returnValue); // ok or cancel
     };
     dlg.addEventListener('close', onClose);
     try { dlg.showModal(); } catch { dlg.show(); } // fallback if modal not supported
@@ -130,7 +127,7 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
-// this function reads csv text into { headers, rows:[{ col:val, ...}, ...] }
+// this function reads csv text
 function simpleCsvParse(text) {
   const lines = text.split(/\r?\n/).filter(l => l.trim().length);
   if (!lines.length) return { headers: [], rows: [] };
@@ -150,7 +147,7 @@ function parseNumber(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-// this builds a graph from a single CSV file's text
+// this builds a graph from a single CSV files text
 function csvOneFileToGraph(text, expectedType) {
   const { headers, rows } = simpleCsvParse(text);
   const need = name => headers.includes(name);

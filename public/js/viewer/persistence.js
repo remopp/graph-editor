@@ -47,7 +47,7 @@ export async function savePositionsOnly() {
   }
 }
 
-//this function saves the entire graph (nodes and links) to the server
+//this function saves the entire graph to the server
 export async function saveAll() {
   const id = getCurrentGraphId();
   if (!id) return;
@@ -55,7 +55,7 @@ export async function saveAll() {
   // Ensure links are plain id refs before saving
   normalizeLinks();
 
-  // this includes description and position; no fx/fy needed without a sim
+  // this includes description and position
   const nodesOut = (graph.nodes || []).map(({ id, label, description, x, y, layer }) => {
     const base = { id };
     if (label != null) base.label = label;
