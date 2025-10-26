@@ -72,7 +72,7 @@ import { shortestPath, clearPathHighlight, degreeCentrality, pageRank } from './
       : 'Weights are ignored for this graph type.';
   }
 
-  //this disables save in read-only mode (viewer role)
+  //this disables save in read only mode (viewer role)
   if (data.access === 'viewer' && saveBtn) {
     saveBtn.disabled = true;
     saveBtn.title = 'You have viewer access (read-only)';

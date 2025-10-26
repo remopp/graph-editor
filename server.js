@@ -194,7 +194,7 @@ app.get('/api/graphs/:id', requireAuth, async (req, res) => {
 });
 
 
-//this updates a graph; viewers get forbidden_readonly (client already handles)
+//this updates a graph
 app.put('/api/graphs/:id', requireAuth, async (req, res) => {
   const id = req.params.id;
   if (!ObjectId.isValid(id)) return res.status(400).json({ error: 'bad id' });
@@ -209,7 +209,7 @@ app.put('/api/graphs/:id', requireAuth, async (req, res) => {
   if (typeof req.body.title === 'string') patch.title = req.body.title;
   if (typeof req.body.type === 'string')  patch.type = req.body.type;
 
-  // Merge behavior: positions-only updates merge; full saves replace
+  // Merge behavior: positions only updates merge; full saves replace
   if (Array.isArray(req.body.nodes)) {
     const incoming = req.body.nodes.map(n => ({
       id: String(n.id),
@@ -227,7 +227,7 @@ app.put('/api/graphs/:id', requireAuth, async (req, res) => {
       // Full save from client: honor deletions and ID changes by replacing set
       patch.nodes = incoming;
     } else {
-      // Positions-only: merge by id, preserve description, keep unspecified nodes
+      // Positions only: merge by id, preserve description, keep unspecified nodes
       const byId = new Map((graph.nodes || []).map(n => [String(n.id), n]));
       const merged = incoming.map(n => {
         const prev = byId.get(String(n.id)) || {};
