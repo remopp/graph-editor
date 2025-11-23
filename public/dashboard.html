@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Dashboard — Graph Editor</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link rel="stylesheet" href="./style.css"/>
+</head>
+<body>
+  <div class="container">
+    <div class="row" style="justify-content: space-between;">
+      <h2>Dashboard</h2>
+      <div>
+        <span id="me" class="badge"></span>
+        <button id="logoutBtn" class="secondary">Log out</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Create New Graph</h3>
+      <div class="row" style="align-items: flex-end;">
+        <input id="newTitle" placeholder="Graph title"/>
+        <label>Type:
+          <select id="newType">
+            <option value="force">Force 2D (weighted)</option>
+            <option value="circle">Circular</option>
+            <option value="grid">Grid</option>
+            <option value="hierarchy">Hierarchical (top-down)</option>
+          </select>
+        </label>
+        <label>
+          <span style="display:block;font-size:.9rem;color:#9db0e2;margin-bottom:.2rem;">(Optional) Import CSV now</span>
+          <input id="csvCreate" type="file" accept=".csv"/>
+        </label>
+        <button id="createBtn">Create</button>
+      </div>
+      <p class="muted small"></p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>Your Graphs</h3>
+        <table id="ownedTbl">
+          <thead><tr><th>Title</th><th>Type</th><th>Updated</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Shared With You</h3>
+        <table id="sharedTbl">
+          <thead><tr><th>Title</th><th>Type</th><th>Updated</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <dialog id="shareRoleDlg">
+    <form method="dialog" id="shareRoleForm">
+      <h3 id="shareRoleTitle">share access</h3>
+      <label style="display:block; margin:8px 0 12px;">
+        <span class="small muted" style="display:block; margin-bottom:.25rem;">username</span>
+        <input id="shareRoleUsername" name="username" placeholder="@user" autocomplete="off" />
+      </label>
+      <div class="row" style="margin:6px 0 16px;">
+        <label style="display:flex; gap:6px; align-items:center; cursor:pointer;">
+          <input type="radio" name="role" value="viewer" checked>
+          <span>viewer</span>
+        </label>
+        <label style="display:flex; gap:6px; align-items:center; cursor:pointer;">
+          <input type="radio" name="role" value="editor">
+          <span>editor</span>
+        </label>
+      </div>
+      <div class="row" style="justify-content:flex-end;">
+        <button class="secondary" value="cancel">Cancel</button>
+        <button id="shareRoleOkBtn" value="ok">OK</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="./js/api.js"></script>
+  <script type="module" src="./js/dashboard.js"></script>
+</body>
+</html>

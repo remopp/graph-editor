@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Viewer — Graph Editor</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link rel="stylesheet" href="./style.css"/>
+  <style>
+    #graphCanvas {
+      width: 100%;
+      height: 88vh;
+      border-radius: 14px;
+      display: block;
+      background: #000;
+      touch-action: none;
+      cursor: grab;
+    }
+    .muted { color:#9db0e2; font-size:.9rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .small { font-size:.85rem; }
+    .rowv { display:flex; flex-direction:column; gap:.5rem; }
+    .rowh { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
+    label span { display:block; margin-bottom:.2rem; }
+    input[type="number"] { width:6rem; }
+    details.dropdown { position: relative; }
+    details.dropdown > summary { list-style: none; cursor: pointer; }
+    details.dropdown > summary::-webkit-details-marker { display:none; }
+    details.dropdown .menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + .4rem);
+      z-index: 50;
+      min-width: 340px;
+      max-width: min(92vw, 560px);
+      max-height: 60vh;
+      overflow: auto;
+      padding: .8rem;
+      border: 1px solid #3b4a7a;
+      border-radius: 12px;
+      background: #0b1022;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .btn[disabled], button[disabled], input[disabled] { opacity: .5; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="row" style="justify-content: space-between;">
+      <h2 id="title">Graph Viewer</h2>
+      <div>
+        <a href="./dashboard.html"><button class="secondary">Back</button></a>
+        <button id="logoutBtn" class="secondary">Log out</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="toolbar">
+        <span>Type: <span id="typeBadge" class="badge"></span></span>
+        <button id="exportBtn">Export CSV</button>
+        <button id="exportPngBtn" class="btn">Download PNG</button>
+        <button id="saveBtn">Save</button>
+        <button id="undoBtn" class="btn">Undo</button>
+        <button id="redoBtn" class="btn">Redo</button>
+        <details id="searchDropdown" class="dropdown">
+          <summary class="btn">Search</summary>
+          <div class="menu">
+            <div class="rowv">
+              <input id="searchInput" class="input" placeholder="Search id or label…"/>
+              <div class="rowh small">
+                <label class="rowh" style="gap:.3rem;">
+                  <input type="checkbox" id="searchInId" checked/>
+                  <span>ID</span>
+                </label>
+                <label class="rowh" style="gap:.3rem;">
+                  <input type="checkbox" id="searchInLabel" checked/>
+                  <span>Label</span>
+                </label>
+              </div>
+              <div class="rowh">
+                <button id="searchExecBtn" class="btn">Search</button>
+                <span id="searchCount" class="muted"></span>
+              </div>
+            </div>
+          </div>
+        </details>
+        <details class="dropdown">
+          <summary class="btn">Node Editor</summary>
+          <div class="menu">
+            <div class="rowv">
+              <div class="rowh">
+                <strong>Selected:</strong>
+                <span id="selInfo" class="mono small">(none)</span>
+              </div>
+              <div class="form-section">
+                <h4 class="section-title">Create node</h4>
+                <div class="rowh wrap">
+                  <label>
+                    <span>New Node ID</span>
+                    <input id="newNodeId" placeholder="e.g. N1" />
+                  </label>
+                  <label>
+                    <span>Label (optional)</span>
+                    <input id="newNodeLabel" placeholder="e.g. User" />
+                  </label>
+                  <div class="grow"></div>
+                  <button id="addNodeBtn">Add Node</button>
+                </div>
+                <label>
+                  <span>Description (optional)</span>
+                  <textarea id="newNodeDesc" rows="3" placeholder="write a short description…"></textarea>
+                </label>
+                <p class="muted small">tip: ids must be unique. labels are free text.</p>
+              </div>
+              <div class="form-section">
+                <h4 class="section-title">Edit selected node</h4>
+                <div class="rowh wrap">
+                  <label>
+                    <span>Edit ID</span>
+                    <input id="editNodeId" />
+                  </label>
+                  <label>
+                    <span>Edit Label</span>
+                    <input id="editNodeLabel" />
+                  </label>
+                  <label>
+                    <span>Layer (hierarchy)</span>
+                    <input id="editNodeLayer" type="number" min="1" step="1" placeholder="1" />
+                  </label>
+                </div>
+                <label>
+                  <span>Description (optional)</span>
+                  <textarea id="editNodeDesc" rows="4" placeholder="write a short description…"></textarea>
+                </label>
+                <div class="rowh end">
+                  <div class="grow"></div>
+                  <button id="applyEditBtn">Apply</button>
+                  <button id="deleteNodeBtn" class="secondary">Delete</button>
+                </div>
+                <p class="muted small">note: changing the id updates edges that reference this node.</p>
+              </div>
+
+            </div>
+          </div>
+        </details>
+        <details class="dropdown">
+          <summary class="btn">Edge Editor</summary>
+          <div class="menu">
+            <div class="rowv">
+              <div class="rowh">
+                <label>
+                  <span>Source</span>
+                  <input id="edgeSrc" list="nodeIdsList" class="mono" placeholder="Node ID"/>
+                </label>
+                <label>
+                  <span>Target</span>
+                  <input id="edgeDst" list="nodeIdsList" class="mono" placeholder="Node ID"/>
+                </label>
+                <label>
+                  <span>Weight (force only)</span>
+                  <input id="edgeW" type="number" step="1" placeholder="(opt)"/>
+                </label>
+              </div>
+              <div class="rowh">
+                <button id="addEdgeBtn">Add Edge</button>
+                <button id="removeEdgeBtn" class="secondary">Remove Edge</button>
+              </div>
+              <p id="edgeNote" class="muted small"></p>
+            </div>
+          </div>
+        </details>
+        <details id="analyticsDropdown" class="dropdown">
+          <summary class="btn">Analytics</summary>
+          <div class="menu">
+            <div class="rowv">
+              <details class="sub">
+                <summary>Shortest Path</summary>
+                <div class="sub-body">
+                  <div class="rowh">
+                    <label>
+                      <span>Source ID</span>
+                      <input id="spSrc" list="nodeIdsList" class="mono" placeholder="Node ID"/>
+                    </label>
+                    <label>
+                      <span>Target ID</span>
+                      <input id="spDst" list="nodeIdsList" class="mono" placeholder="Node ID"/>
+                    </label>
+                  </div>
+                  <div class="rowh">
+                    <button id="runShortestPathBtn">Analyze</button>
+                    <button id="clearShortestPathBtn" class="secondary">Clear</button>
+                  </div>
+                  <p id="spResult" class="muted small"></p>
+                  <p id="spHint" class="muted small"></p>
+                </div>
+              </details>
+              <details class="sub">
+                <summary>Degree Centrality</summary>
+                <div class="sub-body">
+                  <p class="muted small">counts how many connections a node has (in/out/total). good for spotting hubs.</p>
+                  <div class="rowh">
+                    <label>
+                      <span>Mode</span>
+                      <select id="degMode">
+                        <option value="total" selected>total</option>
+                        <option value="in">in-degree</option>
+                        <option value="out">out-degree</option>
+                      </select>
+                    </label>
+                    <button id="runDegreeBtn">Run Degree</button>
+                  </div>
+                  <pre id="degOut" class="mono small"></pre>
+                </div>
+              </details>
+              <details class="sub">
+                <summary>PageRank</summary>
+                <div class="sub-body">
+                  <p class="muted small">importance flows along links; a vote from an important node counts more.</p>
+                  <div class="rowh">
+                    <label>
+                      <span>Damping</span>
+                      <input id="prDamp" type="number" min="0" max="1" step="0.01" value="0.85"/>
+                    </label>
+                    <label>
+                      <span>Iterations</span>
+                      <input id="prIter" type="number" min="1" step="1" value="50"/>
+                    </label>
+                    <button id="runPageRankBtn">Run PageRank</button>
+                  </div>
+                  <pre id="prOut" class="mono small"></pre>
+                </div>
+              </details>
+
+            </div>
+          </div>
+        </details>
+
+      </div>
+
+      <canvas id="graphCanvas"></canvas>
+
+      <p class="muted"></p>
+    </div>
+  </div>
+
+  <datalist id="nodeIdsList"></datalist>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script type="module" src="./js/viewer/index.js"></script>
+
+  <script>
+    document.addEventListener('click', (e) => {
+      document.querySelectorAll('details.dropdown[open]').forEach(d => {
+        if (!d.contains(e.target)) d.removeAttribute('open');
+      });
+    });
+  </script>
+</body>
+</html>

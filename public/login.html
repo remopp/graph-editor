@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Login — Graph Editor</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link rel="stylesheet" href="./style.css"/>
+</head>
+<body>
+  <div class="container">
+    <div class="auth-card card">
+      <h2>Sign Up</h2>
+      <form id="signupForm" class="auth-form" autocomplete="off">
+        <div class="field">
+          <label for="suUser">username</label>
+          <div class="input-row">
+            <span class="prefix">@</span>
+            <input id="suUser" name="username" type="text" placeholder="yourname" autocomplete="username" required/>
+          </div>
+          <div class="form-hint">use letters, numbers, or underscores</div>
+        </div>
+        <div class="field">
+          <label for="suPass">password</label>
+          <input id="suPass" name="new-password" type="password" placeholder="••••••••" autocomplete="new-password" required/>
+        </div>
+        <div class="auth-actions">
+          <button type="submit" class="btn">Create Account</button>
+        </div>
+      </form>
+      <hr style="border:0;border-top:1px solid var(--border);margin:16px 0;">
+      <h2>Log In</h2>
+      <form id="loginForm" class="auth-form" autocomplete="off">
+        <div class="field">
+          <label for="liUser">username</label>
+          <div class="input-row">
+            <span class="prefix">@</span>
+            <input id="liUser" name="username" type="text" placeholder="yourname" autocomplete="username" required/>
+          </div>
+        </div>
+        <div class="field">
+          <label for="liPass">password</label>
+          <input id="liPass" name="current-password" type="password" placeholder="••••••••" autocomplete="current-password" required/>
+        </div>
+        <div class="auth-actions">
+          <button type="submit" class="btn">Log In</button>   
+        </div>
+      </form>
+    </div>
+  </div>
+  <script src="./js/api.js"></script>
+  <script type="module" src="./js/auth.js"></script>
+</body>
+</html>
