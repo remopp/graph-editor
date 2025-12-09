@@ -23,7 +23,7 @@ This project serves as a demonstration of **Full Stack Development** and **Cloud
 * **Data Integrity:** Validated incoming data payloads to ensure that graph nodes and edges adhere to the required structure before persistence.
 
 ### Security & Privacy Features
-* **Password Hashing:** User credentials are secured using **Bcrypt**. Passwords are salted and hashed immediately upon registration, ensuring that plain-text passwords are never stored in the database. This protects user privacy even in the event of a data breach.
+* **Password Hashing:** User credentials are secured using **Bcrypt**. Passwords are salted and hashed immediately upon registration, ensuring that plain-text passwords are never stored in the database.
 * **Token-Based Authentication (JWT):** Implemented a stateless session system using **JSON Web Tokens**.
   * Upon successful login, the server issues a signed JWT containing the user's ID.
   * The client stores this token and attaches it to the `Authorization` header of subsequent requests.
